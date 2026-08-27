@@ -1,0 +1,2754 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ESP CSI Web Serial Viewer</title>
+  <style>
+    :root {
+      --bg: #07111f;
+      --bg-soft: #0d1c31;
+      --panel: rgba(12, 27, 48, 0.94);
+      --panel-2: rgba(20, 38, 67, 0.96);
+      --border: rgba(159, 197, 255, 0.15);
+      --text: #e9f2ff;
+      --muted: #92a8cb;
+      --accent: #59c8ff;
+      --accent-2: #79ffbb;
+      --warn: #ffbe5c;
+      --danger: #ff7288;
+      --grid: rgba(255, 255, 255, 0.08);
+      --shadow: 0 18px 44px rgba(0, 0, 0, 0.28);
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      color: var(--text);
+      font-family: "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+      background:
+        radial-gradient(circle at top left, rgba(89, 200, 255, 0.16), transparent 28%),
+        radial-gradient(circle at top right, rgba(121, 255, 187, 0.10), transparent 22%),
+        linear-gradient(180deg, #06101d 0%, #091321 100%);
+    }
+
+    .app {
+      max-width: 1680px;
+      margin: 0 auto;
+      padding: 18px;
+      display: grid;
+      grid-template-columns: 340px minmax(0, 1fr);
+      gap: 18px;
+    }
+
+    .sidebar,
+    .main {
+      display: flex;
+      flex-direction: column;
+      gap: 18px;
+      min-width: 0;
+    }
+
+    .panel {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 18px;
+      box-shadow: var(--shadow);
+      overflow: hidden;
+      backdrop-filter: blur(12px);
+    }
+
+    .section {
+      padding: 18px;
+    }
+
+    h1,
+    h2,
+    h3,
+    p {
+      margin: 0;
+    }
+
+    h1 {
+      font-size: 24px;
+      margin-bottom: 10px;
+    }
+
+    h2 {
+      font-size: 16px;
+      color: var(--accent);
+      margin-bottom: 12px;
+    }
+
+    .muted {
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.6;
+    }
+
+    .status-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      padding: 8px 12px;
+      border-radius: 999px;
+      background: rgba(255, 255, 255, 0.05);
+      font-size: 13px;
+    }
+
+    .status-dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 999px;
+      background: var(--danger);
+      box-shadow: 0 0 16px rgba(255, 114, 136, 0.55);
+    }
+
+    .status-dot.connected {
+      background: var(--accent-2);
+      box-shadow: 0 0 16px rgba(121, 255, 187, 0.6);
+    }
+
+    .row,
+    .button-row,
+    .toolbar {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      align-items: center;
+    }
+
+    .toolbar {
+      justify-content: space-between;
+    }
+
+    .lang-switch {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 4px;
+      border-radius: 999px;
+      background: rgba(255, 255, 255, 0.06);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+    }
+
+    .lang-switch button {
+      min-width: 88px;
+      padding: 8px 12px;
+      border-radius: 999px;
+      background: transparent;
+    }
+
+    .lang-switch button.active {
+      background: linear-gradient(180deg, #29416d, #1b2d4f);
+      box-shadow: 0 8px 18px rgba(0, 0, 0, 0.18);
+    }
+
+    .lang-switch-separator {
+      color: var(--muted);
+      font-size: 13px;
+      user-select: none;
+    }
+
+    label {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      font-size: 12px;
+      color: var(--muted);
+    }
+
+    input {
+      width: 100%;
+      background: rgba(255, 255, 255, 0.05);
+      color: var(--text);
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      border-radius: 10px;
+      padding: 10px 12px;
+      outline: none;
+    }
+
+    input:disabled {
+      opacity: 0.75;
+      cursor: not-allowed;
+    }
+
+    button {
+      border: 0;
+      border-radius: 12px;
+      padding: 10px 14px;
+      background: linear-gradient(180deg, #29416d, #1b2d4f);
+      color: var(--text);
+      font-weight: 600;
+      cursor: pointer;
+      transition: transform 0.12s ease, opacity 0.12s ease, box-shadow 0.12s ease, filter 0.12s ease;
+    }
+
+    button:hover:not(:disabled) {
+      transform: translateY(-1px);
+    }
+
+    button:active:not(:disabled),
+    button.button-pressed:not(:disabled) {
+      transform: translateY(1px) scale(0.985);
+      filter: brightness(1.08);
+      box-shadow: inset 0 2px 10px rgba(0, 0, 0, 0.22);
+    }
+
+    button:disabled {
+      opacity: 0.45;
+      cursor: not-allowed;
+    }
+
+    button.secondary {
+      background: rgba(255, 255, 255, 0.08);
+    }
+
+    button.primary {
+      background: linear-gradient(180deg, #1f8cff, #165bcc);
+      box-shadow: 0 14px 30px rgba(31, 140, 255, 0.30);
+    }
+
+    button.primary:hover:not(:disabled) {
+      box-shadow: 0 16px 34px rgba(31, 140, 255, 0.36);
+    }
+
+    .control-grid {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 12px;
+    }
+
+    .stat-grid {
+      display: grid;
+      grid-template-columns: repeat(5, minmax(0, 1fr));
+      gap: 12px;
+    }
+
+    .stat-card {
+      background: var(--panel-2);
+      border-radius: 14px;
+      padding: 14px;
+      min-height: 94px;
+      border: 1px solid rgba(255, 255, 255, 0.05);
+    }
+
+    .stat-card .label {
+      color: var(--muted);
+      font-size: 12px;
+      margin-bottom: 8px;
+    }
+
+    .stat-card .value {
+      font-size: 24px;
+      line-height: 1.2;
+      font-weight: 700;
+      word-break: break-word;
+    }
+
+    .chart-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 18px;
+    }
+
+    .chart-card {
+      padding: 16px;
+    }
+
+    .chart-card.full {
+      grid-column: 1 / -1;
+    }
+
+    .chart-head {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 12px;
+      align-items: flex-start;
+    }
+
+    .legend {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      justify-content: flex-end;
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    label.toggle-switch {
+      flex-direction: row;
+      align-items: center;
+      gap: 8px;
+      color: var(--muted);
+      font-size: 12px;
+      cursor: pointer;
+      user-select: none;
+      white-space: nowrap;
+    }
+
+    label.toggle-switch.is-disabled {
+      opacity: 0.45;
+      cursor: not-allowed;
+    }
+
+    label.toggle-switch.is-disabled input {
+      cursor: not-allowed;
+    }
+
+    label.toggle-switch input {
+      width: auto;
+      margin: 0;
+      padding: 0;
+      accent-color: var(--accent);
+      cursor: pointer;
+    }
+
+    .chart-head-right {
+      display: flex;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 14px;
+      justify-content: flex-end;
+    }
+
+    .chart-card.chart-disabled canvas {
+      display: none;
+    }
+
+    .legend-item {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .legend-dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 999px;
+    }
+
+    canvas {
+      display: block;
+      width: 100%;
+      height: 300px;
+      background: linear-gradient(180deg, rgba(255, 255, 255, 0.03), rgba(255, 255, 255, 0.015));
+      border-radius: 14px;
+      border: 1px solid rgba(255, 255, 255, 0.06);
+      cursor: grab;
+      touch-action: none;
+    }
+
+    canvas.dragging {
+      cursor: grabbing;
+    }
+
+    .square-canvas {
+      width: min(100%, 420px);
+      height: auto;
+      aspect-ratio: 1 / 1;
+      margin: 0 auto;
+    }
+
+    .field-help {
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.4;
+    }
+
+    .inline-input-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .inline-input-row input {
+      flex: 1 1 auto;
+      min-width: 0;
+    }
+
+    .inline-input-row button {
+      flex: 0 0 auto;
+      white-space: nowrap;
+    }
+
+    .pause-panel {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      margin-top: 12px;
+    }
+
+    .pause-btn {
+      width: 100%;
+      min-height: 58px;
+      font-size: 18px;
+      font-weight: 700;
+      border-radius: 16px;
+      letter-spacing: 0.02em;
+      box-shadow: 0 14px 30px rgba(0, 0, 0, 0.20);
+    }
+
+    .pause-btn.running {
+      background: linear-gradient(180deg, #17613f, #0f412b);
+    }
+
+    .pause-btn.paused {
+      background: linear-gradient(180deg, #8a5121, #5a3314);
+    }
+
+    .pause-btn.stopped {
+      background: linear-gradient(180deg, #3a4257, #232a3c);
+      box-shadow: 0 10px 22px rgba(0, 0, 0, 0.16);
+    }
+
+    .pause-hint {
+      text-align: center;
+    }
+
+    .map-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(92px, 1fr));
+      gap: 8px;
+      max-height: 520px;
+      overflow: auto;
+    }
+
+    .map-item {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 10px;
+      border-radius: 10px;
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid rgba(255, 255, 255, 0.06);
+      font-size: 12px;
+      color: var(--text);
+    }
+
+    .map-dot {
+      width: 12px;
+      height: 12px;
+      border-radius: 999px;
+      flex: 0 0 auto;
+    }
+
+    pre {
+      margin: 0;
+      background: #081220;
+      color: #dfe9ff;
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 14px;
+      padding: 14px;
+      font-size: 12px;
+      line-height: 1.55;
+      white-space: pre-wrap;
+      word-break: break-word;
+      overflow: auto;
+    }
+
+    .log-box {
+      min-height: 220px;
+      max-height: 340px;
+    }
+
+    .footer-note {
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.7;
+    }
+
+    .usage-guide {
+      color: var(--text);
+      font-size: 14px;
+      line-height: 1.8;
+    }
+
+    .usage-guide > div + div {
+      margin-top: 4px;
+    }
+
+    .footer-note code,
+    .muted code,
+    .usage-guide code {
+      color: #dff8ff;
+      background: rgba(255, 255, 255, 0.06);
+      padding: 2px 6px;
+      border-radius: 6px;
+    }
+
+    @media (max-width: 1280px) {
+      .app {
+        grid-template-columns: 1fr;
+      }
+
+      .stat-grid {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+      }
+
+      .chart-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    @media (max-width: 760px) {
+      .control-grid,
+      .stat-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <aside class="sidebar">
+      <section class="panel section">
+        <div class="toolbar" style="margin-bottom: 10px;">
+          <h1 id="appTitle">ESP CSI Web Serial Viewer</h1>
+          <div class="lang-switch" aria-label="Language switch">
+            <button id="langZhBtn" type="button" class="secondary active">中文</button>
+            <span class="lang-switch-separator">/</span>
+            <button id="langEnBtn" type="button" class="secondary">English</button>
+          </div>
+        </div>
+        <div class="status-pill">
+          <span id="statusDot" class="status-dot"></span>
+          <span id="statusText">未连接</span>
+        </div>
+        <div style="height: 14px;"></div>
+        <div class="control-grid">
+          <label>
+            <span id="sampleStrideLabel">抽样量</span>
+            <span id="sampleStrideDesc" class="field-help">每 X 个子载波显示 1 个，用于降低渲染压力。</span>
+            <div class="inline-input-row">
+              <input id="sampleStrideInput" type="number" value="3" step="1" min="1">
+              <button id="applySampleStrideBtn" type="button" class="secondary">应用</button>
+            </div>
+            <span id="sampleRatioHelp" class="field-help">3:1</span>
+          </label>
+        </div>
+        <div style="height: 12px;"></div>
+        <div class="button-row">
+          <button id="connectBtn" class="primary">连接串口</button>
+          <button id="disconnectBtn" class="secondary" disabled>断开</button>
+        </div>
+        <div style="height: 10px;"></div>
+        <div class="button-row">
+          <button id="clearChartsBtn" class="secondary">清空波形</button>
+          <button id="downloadCsvBtn" class="secondary">下载 CSV</button>
+        </div>
+        <div class="pause-panel">
+          <button id="pauseUiBtn" class="pause-btn stopped" type="button" disabled>停止</button>
+          <div id="pauseHint" class="field-help pause-hint">连接后可用空格键切换暂停 / 恢复，输入框聚焦时除外。</div>
+        </div>
+      </section>
+
+      <section class="panel section">
+        <h2 id="usageGuideTitle">使用说明</h2>
+        <div id="usageGuideBody" class="usage-guide"></div>
+      </section>
+
+      <section class="panel section">
+        <h2 id="eventTitle">事件</h2>
+        <pre id="eventLog" class="log-box"></pre>
+      </section>
+
+      <section class="panel section">
+        <h2 id="colorMapTitle">子载波颜色对照</h2>
+        <div id="colorMapDesc" class="muted" style="margin-bottom: 12px;"></div>
+        <div id="subcarrierColorMap" class="map-grid"></div>
+      </section>
+    </aside>
+
+    <main class="main">
+      <section class="panel section">
+        <div class="toolbar">
+          <div class="row">
+            <div id="validCountPill" class="status-pill"><span id="validCountLabel">有效帧</span><strong id="validCountText">0</strong></div>
+            <div class="status-pill"><span id="invalidCountLabel">坏帧</span><strong id="invalidCountText">0</strong></div>
+            <div class="status-pill"><span id="logCountLabel">日志行</span><strong id="logCountText">0</strong></div>
+            <div class="status-pill"><span id="subcarrierCountLabel">子载波</span><strong id="subcarrierCountText">0</strong></div>
+            <div class="status-pill"><span id="baudRateLabel">波特率</span><strong id="baudRateText">921600</strong></div>
+          </div>
+          <div class="status-pill"><span id="formatLabel">当前格式</span><strong id="formatText">-</strong></div>
+        </div>
+      </section>
+
+      <section class="panel section">
+        <h2 id="currentStateTitle">当前状态</h2>
+        <div id="statGrid" class="stat-grid"></div>
+      </section>
+
+      <section class="chart-grid">
+        <section id="phaseChartCard" class="panel chart-card">
+          <div class="chart-head">
+            <div>
+              <h2 id="phaseChartTitle">当前帧相位-子载波序号图</h2>
+              <p id="phaseChartDesc" class="muted">对应 Python 窗口里的 <code>Phase Data - Last Frame</code>。</p>
+            </div>
+            <div class="chart-head-right">
+              <label class="toggle-switch">
+                <input id="phaseUnwrapToggle" type="checkbox">
+                <span id="phaseUnwrapLabel">Unwrap</span>
+              </label>
+              <label class="toggle-switch">
+                <input id="phaseCenterZeroToggle" type="checkbox">
+                <span id="phaseCenterZeroLabel">强制中心相位归零</span>
+              </label>
+              <label class="toggle-switch">
+                <input id="phaseChartEnableToggle" type="checkbox" checked>
+                <span class="chart-enable-label">启用</span>
+              </label>
+            </div>
+          </div>
+          <canvas id="phaseCanvas" width="1200" height="300"></canvas>
+        </section>
+
+        <section id="iqChartCard" class="panel chart-card">
+          <div class="chart-head">
+            <div>
+              <h2 id="iqChartTitle">当前帧IQ散点图</h2>
+              <p id="iqChartDesc" class="muted">X 轴是 I(real)，Y 轴是 Q(imag)。</p>
+            </div>
+            <div class="chart-head-right">
+              <label class="toggle-switch">
+                <input id="iqChartEnableToggle" type="checkbox" checked>
+                <span class="chart-enable-label">启用</span>
+              </label>
+            </div>
+          </div>
+          <canvas id="iqCanvas" class="square-canvas" width="600" height="600"></canvas>
+        </section>
+
+        <section id="amplitudeChartCard" class="panel chart-card full">
+          <div class="chart-head">
+            <div>
+              <h2 id="amplitudeChartTitle">子载波幅度随时间变化波形图</h2>
+              <p id="amplitudeChartDesc" class="muted">每条曲线对应一个子载波，另外保留 AGC / FFT 轨迹。</p>
+            </div>
+            <div class="chart-head-right">
+              <div id="amplitudeLegend" class="legend"></div>
+              <label class="toggle-switch">
+                <input id="amplitudeChartEnableToggle" type="checkbox" checked>
+                <span class="chart-enable-label">启用</span>
+              </label>
+            </div>
+          </div>
+          <canvas id="amplitudeCanvas" width="1600" height="300"></canvas>
+        </section>
+
+        <section id="phaseHistoryChartCard" class="panel chart-card full">
+          <div class="chart-head">
+            <div>
+              <h2 id="phaseHistoryChartTitle">子载波相位随时间变化波形图</h2>
+              <p id="phaseHistoryChartDesc" class="muted">每条曲线对应一个子载波的 phase(time)。</p>
+            </div>
+            <div class="chart-head-right">
+              <div id="phaseLegend" class="legend"></div>
+              <label class="toggle-switch">
+                <input id="phaseHistoryChartEnableToggle" type="checkbox" checked>
+                <span class="chart-enable-label">启用</span>
+              </label>
+            </div>
+          </div>
+          <canvas id="phaseHistoryCanvas" width="1600" height="300"></canvas>
+        </section>
+      </section>
+
+      <section class="panel section">
+        <div class="chart-head">
+          <div>
+            <h2 id="serialLogTitle">串口 / 解析日志</h2>
+          </div>
+          <div class="chart-head-right">
+            <button id="clearLogsBtn" class="secondary">清空日志</button>
+            <button id="downloadLogBtn" class="secondary">下载日志</button>
+          </div>
+        </div>
+        <pre id="serialLog" class="log-box"></pre>
+      </section>
+    </main>
+  </div>
+
+  <script>
+    const DATA_COLUMNS_NAMES_C5C6 = [
+      "type", "id", "mac", "rssi", "rate", "noise_floor", "fft_gain", "agc_gain",
+      "channel", "local_timestamp", "sig_len", "rx_format", "len", "first_word", "data"
+    ];
+    const DATA_COLUMNS_NAMES = [
+      "type", "id", "mac", "rssi", "rate", "sig_mode", "mcs", "bandwidth", "smoothing",
+      "not_sounding", "aggregation", "stbc", "fec_coding", "sgi", "noise_floor",
+      "ampdu_cnt", "channel", "secondary_channel", "local_timestamp", "ant",
+      "sig_len", "rx_format", "len", "first_word", "data"
+    ];
+    const DATA_COLUMNS_NAMES_SHORT = ["type", "mac", "len", "first_word", "data"];
+    const CSI_PREFIX = "CSI_DATA";
+    const MAX_HISTORY_FRAMES = 1000;
+    const DEFAULT_HISTORY_WINDOW_SIZE = 200;
+    const MAX_EVENT_LINES = 80;
+    const MAX_LOG_LINES = 500;
+    const MAX_LOG_CHARS = 160000;
+    const RENDER_INTERVAL_MS = 80;
+    const I18N = {
+      zh: {
+        pageTitle: "ESP CSI Web Serial Viewer",
+        appTitle: "ESP CSI Web Serial Viewer",
+        introText: "用浏览器直接替代 <code>csi_data_read_parse.py</code>: 连接串口、校验 <code>CSI_DATA</code>、实时画图，并导出 CSV / 日志。",
+        langToggle: "English",
+        statusConnected: "已连接",
+        statusDisconnected: "未连接",
+        baudRateLabel: "波特率",
+        sampleStrideLabel: "抽样量",
+        sampleStrideDesc: "每 X 个子载波显示 1 个，用于降低渲染压力。",
+        applySampleStrideBtn: "应用",
+        pauseUiBtn: "暂停",
+        resumeUiBtn: "恢复",
+        stopUiBtn: "停止",
+        pauseHint: "连接后可用空格键切换暂停 / 恢复，输入框聚焦时除外。",
+        connectBtn: "连接串口",
+        disconnectBtn: "断开",
+        clearChartsBtn: "清空波形",
+        clearLogsBtn: "清空日志",
+        downloadCsvBtn: "下载 CSV",
+        downloadLogBtn: "下载日志",
+        eventTitle: "事件",
+        colorMapTitle: "子载波颜色对照",
+        colorMapDesc: "显示当前绘制的子载波序号与颜色对照，抽样比 {ratio}，共显示 {shown}/{total} 个。",
+        colorMapEmpty: "等待 CSI 数据...",
+        usageGuideTitle: "使用说明",
+        usageGuideBody: "<div>1. 点击“连接串口”后开始接收 <code>CSI_DATA</code>。</div><div>2. 图表都支持鼠标左键拖动平移、滚轮缩放、双击复位；在横坐标轴区域滚轮只缩放横坐标，在纵坐标轴区域滚轮只缩放纵坐标。</div><div>3. 颜色对照用于查看每条历史曲线对应的子载波序号。</div><div>4. 点击“暂停”后可静态观察，可用空格键切换暂停 / 恢复。</div><div>5. “抽样量”越大，显示的子载波越少，渲染压力越低；关闭暂时不需要的图表也可进一步降低渲染压力。</div>",
+        validCountLabel: "有效帧",
+        invalidCountLabel: "坏帧",
+        logCountLabel: "日志行",
+        subcarrierCountLabel: "子载波",
+        formatLabel: "当前格式",
+        currentStateTitle: "当前状态",
+        phaseChartTitle: "当前帧相位-子载波序号图",
+        phaseChartDesc: "当前一帧的相位随子载波序号变化。",
+        phaseUnwrapLabel: "Unwrap 相位",
+        phaseCenterZeroLabel: "强制中心相位归零",
+        chartEnableLabel: "启用",
+        iqChartTitle: "当前帧IQ散点图",
+        iqChartDesc: "X 轴是 I(real)，Y 轴是 Q(imag)。",
+        amplitudeChartTitle: "子载波幅度随时间变化波形图",
+        amplitudeChartDesc: "显示抽样后的子载波幅度随时间变化。",
+        phaseHistoryChartTitle: "子载波相位随时间变化波形图",
+        phaseHistoryChartDesc: "显示抽样后的子载波相位随时间变化。",
+        serialLogTitle: "串口 / 解析日志",
+        legendAgc: "AGC Gain",
+        legendFft: "FFT Gain",
+        legendSubcarrier: "抽样子载波，颜色参考“子载波颜色对照”",
+        legendPhaseHistory: "抽样子载波相位，颜色参考“子载波颜色对照”",
+        statTotalLines: "串口行数",
+        statCsiLines: "CSI 行数",
+        statLatestPacketId: "最近包 ID",
+        statMac: "MAC",
+        statRssi: "RSSI",
+        statRate: "Rate",
+        statFftGain: "FFT Gain",
+        statAgcGain: "AGC Gain",
+        statChannel: "Channel",
+        statRxFormat: "包格式 (rx_format)",
+        emptyWaiting: "等待 CSI 数据...",
+        emptyNoData: "暂无可绘制数据",
+        emptyNoIq: "暂无 IQ 点",
+        eventReady: "页面已就绪，点击“连接串口”开始读取 CSI_DATA。",
+        eventUnsupported: "当前浏览器不支持 Web Serial，请使用 Chrome 或 Edge。",
+        eventConnectSuccess: "串口已连接，波特率 {baudRate}",
+        eventConnectFailed: "连接失败: {message}",
+        eventDisconnected: "串口已断开",
+        eventReadError: "串口读取结束: {message}",
+        eventReadEnded: "串口读取已结束",
+        eventClearedCharts: "已清空波形缓存和 CSV 缓存",
+        eventClearedLogs: "已清空日志",
+        eventNoCsv: "当前没有可导出的 CSI 数据",
+        eventCsvExported: "已导出 csi_data.csv，共 {count} 条",
+        eventNoLog: "当前没有可导出的日志",
+        eventLogExported: "已导出 csi_data_log.txt",
+        eventSampleStrideApplied: "已应用抽样量 {stride}:1",
+        eventUiPaused: "已暂停界面更新",
+        eventUiResumed: "已恢复界面更新",
+        parseElementCount: "字段数量不匹配",
+        parseInvalidLen: "len 字段无效",
+        parseDataIncomplete: "data 字段不完整",
+        parseDataNotArray: "data 不是数组",
+        parseLenMismatch: "len 与 data 长度不一致"
+      },
+      en: {
+        pageTitle: "ESP CSI Web Serial Viewer",
+        appTitle: "ESP CSI Web Serial Viewer",
+        introText: "Browser replacement for <code>csi_data_read_parse.py</code>: connect serial, validate <code>CSI_DATA</code>, render charts in real time, and export CSV / logs.",
+        langToggle: "中文",
+        statusConnected: "Connected",
+        statusDisconnected: "Disconnected",
+        baudRateLabel: "Baud Rate",
+        sampleStrideLabel: "Sampling",
+        sampleStrideDesc: "Show 1 of every X subcarriers to reduce rendering load.",
+        applySampleStrideBtn: "Apply",
+        pauseUiBtn: "Pause",
+        resumeUiBtn: "Resume",
+        stopUiBtn: "Stopped",
+        pauseHint: "After connecting, press Space to toggle pause / resume, except when an input is focused.",
+        connectBtn: "Connect",
+        disconnectBtn: "Disconnect",
+        clearChartsBtn: "Clear Charts",
+        clearLogsBtn: "Clear Logs",
+        downloadCsvBtn: "Download CSV",
+        downloadLogBtn: "Download Log",
+        eventTitle: "Events",
+        colorMapTitle: "Subcarrier Color Map",
+        colorMapDesc: "Color to subcarrier index mapping for rendered traces. Sampling ratio {ratio}, showing {shown}/{total}.",
+        colorMapEmpty: "Waiting for CSI data...",
+        usageGuideTitle: "Usage Guide",
+        usageGuideBody: "<div>1. Click Connect to start receiving <code>CSI_DATA</code>.</div><div>2. Charts support left-drag to pan, mouse wheel to zoom, and double-click to reset; scrolling over the X axis zooms horizontally only, scrolling over the Y axis zooms vertically only.</div><div>3. Use the color map to match each history trace to its subcarrier index.</div><div>4. After pausing you can inspect a frozen snapshot; press Space to toggle pause / resume.</div><div>5. A larger sampling value shows fewer subcarriers and reduces rendering load; disable charts you don't need to reduce it further.</div>",
+        validCountLabel: "Valid",
+        invalidCountLabel: "Invalid",
+        logCountLabel: "Log Lines",
+        subcarrierCountLabel: "Subcarriers",
+        formatLabel: "Format",
+        currentStateTitle: "Current State",
+        phaseChartTitle: "Current Frame Phase vs Subcarrier Index",
+        phaseChartDesc: "Phase of the current frame against subcarrier index.",
+        phaseUnwrapLabel: "Unwrap phase",
+        phaseCenterZeroLabel: "Force center phase = 0",
+        chartEnableLabel: "Enable",
+        iqChartTitle: "Current Frame IQ Scatter Plot",
+        iqChartDesc: "X axis is I(real), Y axis is Q(imag).",
+        amplitudeChartTitle: "Subcarrier Amplitude Waveform Over Time",
+        amplitudeChartDesc: "Shows sampled subcarrier amplitude over time.",
+        phaseHistoryChartTitle: "Subcarrier Phase Waveform Over Time",
+        phaseHistoryChartDesc: "Shows sampled subcarrier phase over time.",
+        serialLogTitle: "Serial / Parser Log",
+        legendAgc: "AGC Gain",
+        legendFft: "FFT Gain",
+        legendSubcarrier: "Sampled subcarriers, colors refer to Subcarrier Color Map",
+        legendPhaseHistory: "Sampled subcarrier phase, colors refer to Subcarrier Color Map",
+        statTotalLines: "Serial Lines",
+        statCsiLines: "CSI Lines",
+        statLatestPacketId: "Latest Packet ID",
+        statMac: "MAC",
+        statRssi: "RSSI",
+        statRate: "Rate",
+        statFftGain: "FFT Gain",
+        statAgcGain: "AGC Gain",
+        statChannel: "Channel",
+        statRxFormat: "Rx Format",
+        emptyWaiting: "Waiting for CSI data...",
+        emptyNoData: "No data to render",
+        emptyNoIq: "No IQ points",
+        eventReady: "Page is ready. Click Connect to start reading CSI_DATA.",
+        eventUnsupported: "Web Serial is not supported. Please use Chrome or Edge.",
+        eventConnectSuccess: "Serial connected, baud rate {baudRate}",
+        eventConnectFailed: "Connection failed: {message}",
+        eventDisconnected: "Serial disconnected",
+        eventReadError: "Serial read ended: {message}",
+        eventReadEnded: "Serial read loop ended",
+        eventClearedCharts: "Waveform cache and CSV cache cleared",
+        eventClearedLogs: "Logs cleared",
+        eventNoCsv: "No CSI data to export",
+        eventCsvExported: "Exported csi_data.csv with {count} rows",
+        eventNoLog: "No logs to export",
+        eventLogExported: "Exported csi_data_log.txt",
+        eventSampleStrideApplied: "Applied sampling ratio {stride}:1",
+        eventUiPaused: "UI updates paused",
+        eventUiResumed: "UI updates resumed",
+        parseElementCount: "Field count mismatch",
+        parseInvalidLen: "Invalid len field",
+        parseDataIncomplete: "Incomplete data field",
+        parseDataNotArray: "Data is not an array",
+        parseLenMismatch: "len does not match data size"
+      }
+    };
+
+    const state = {
+      port: null,
+      reader: null,
+      connected: false,
+      disconnecting: false,
+      frames: [],
+      csvLines: [],
+      csvHeader: null,
+      logEntries: [],
+      eventEntries: [],
+      stats: {
+        totalLines: 0,
+        csiLines: 0,
+        validFrames: 0,
+        invalidFrames: 0,
+      },
+      appliedSampleStride: 3,
+      uiPaused: false,
+      currentFormat: "-",
+      subcarrierColors: [],
+      renderTimer: null,
+      lastMeta: null,
+      language: "zh",
+      chartViews: null,
+      activeChartDrag: null,
+      chartRenderPending: false,
+      pausedSnapshot: null,
+      phaseUnwrap: false,
+      phaseCenterZero: false,
+      chartEnabled: {
+        phase: true,
+        iq: true,
+        amplitude: true,
+        phaseHistory: true,
+      },
+    };
+
+    const statusDot = document.getElementById("statusDot");
+    const statusText = document.getElementById("statusText");
+    const sampleStrideInput = document.getElementById("sampleStrideInput");
+    const sampleRatioHelp = document.getElementById("sampleRatioHelp");
+    const baudRateText = document.getElementById("baudRateText");
+    const pauseUiBtn = document.getElementById("pauseUiBtn");
+    const pauseHint = document.getElementById("pauseHint");
+    const validCountPill = document.getElementById("validCountPill");
+    const validCountText = document.getElementById("validCountText");
+    const invalidCountText = document.getElementById("invalidCountText");
+    const logCountText = document.getElementById("logCountText");
+    const subcarrierCountText = document.getElementById("subcarrierCountText");
+    const formatText = document.getElementById("formatText");
+    const statGrid = document.getElementById("statGrid");
+    const eventLog = document.getElementById("eventLog");
+    const serialLog = document.getElementById("serialLog");
+    const subcarrierColorMap = document.getElementById("subcarrierColorMap");
+    const amplitudeLegend = document.getElementById("amplitudeLegend");
+    const phaseLegend = document.getElementById("phaseLegend");
+    const phaseUnwrapToggle = document.getElementById("phaseUnwrapToggle");
+    const phaseCenterZeroToggle = document.getElementById("phaseCenterZeroToggle");
+    const chartToggleConfigs = [
+      { key: "phase", cardId: "phaseChartCard", inputId: "phaseChartEnableToggle", viewKey: "phase" },
+      { key: "iq", cardId: "iqChartCard", inputId: "iqChartEnableToggle", viewKey: "iq" },
+      { key: "amplitude", cardId: "amplitudeChartCard", inputId: "amplitudeChartEnableToggle", viewKey: "amplitude" },
+      { key: "phaseHistory", cardId: "phaseHistoryChartCard", inputId: "phaseHistoryChartEnableToggle", viewKey: "phaseHistory" },
+    ];
+
+    const phaseCanvas = document.getElementById("phaseCanvas");
+    const iqCanvas = document.getElementById("iqCanvas");
+    const amplitudeCanvas = document.getElementById("amplitudeCanvas");
+    const phaseHistoryCanvas = document.getElementById("phaseHistoryCanvas");
+
+    function createChartViewport(canvas) {
+      return {
+        canvas,
+        xActive: false,
+        yActive: false,
+        xMin: null,
+        xMax: null,
+        yMin: null,
+        yMax: null,
+        plotRect: null,
+        baseDomain: null,
+        currentDomain: null,
+        freeX: false,
+        xPartner: null,
+      };
+    }
+
+    state.chartViews = {
+      phase: createChartViewport(phaseCanvas),
+      iq: createChartViewport(iqCanvas),
+      amplitude: createChartViewport(amplitudeCanvas),
+      phaseHistory: createChartViewport(phaseHistoryCanvas),
+    };
+    state.chartViews.amplitude.freeX = true;
+    state.chartViews.phaseHistory.freeX = true;
+    state.chartViews.amplitude.xPartner = state.chartViews.phaseHistory;
+    state.chartViews.phaseHistory.xPartner = state.chartViews.amplitude;
+
+    function t(key, vars = {}) {
+      const messages = I18N[state.language] || I18N.zh;
+      const template = messages[key] ?? key;
+      return template.replace(/\{(\w+)\}/g, (_, name) => String(vars[name] ?? ""));
+    }
+
+    function createPausedSnapshot() {
+      return {
+        frames: state.frames.slice(),
+        lastMeta: state.lastMeta ? { ...state.lastMeta } : null,
+        subcarrierColors: state.subcarrierColors.slice(),
+        currentFormat: state.currentFormat,
+        stats: { ...state.stats },
+      };
+    }
+
+    function getDisplaySource() {
+      return state.uiPaused && state.pausedSnapshot ? state.pausedSnapshot : state;
+    }
+
+    function stringifyEntry(entry) {
+      if (!entry) {
+        return "";
+      }
+      if (entry.type === "raw") {
+        return entry.text;
+      }
+      return t(entry.key, entry.vars);
+    }
+
+    function renderEventLog(force = false) {
+      void force;
+      eventLog.textContent = state.eventEntries.map((entry) => {
+        const text = stringifyEntry(entry);
+        return entry?.vars?.ts ? "[" + entry.vars.ts + "] " + text : text;
+      }).join("\n");
+    }
+
+    function trimLogEntries() {
+      let rendered = state.logEntries.map(stringifyEntry).join("\n");
+      while (state.logEntries.length > MAX_LOG_LINES || rendered.length > MAX_LOG_CHARS) {
+        state.logEntries.shift();
+        rendered = state.logEntries.map(stringifyEntry).join("\n");
+      }
+    }
+
+    function renderSerialLog(force = false) {
+      if (state.uiPaused && !force) {
+        return;
+      }
+      const text = state.logEntries.map(stringifyEntry).join("\n");
+      serialLog.textContent = text;
+      serialLog.scrollTop = serialLog.scrollHeight;
+      logCountText.textContent = String(state.logEntries.length);
+    }
+
+    function addEvent(key, vars = {}) {
+      const ts = new Date().toLocaleTimeString();
+      state.eventEntries.unshift({ type: "i18n", key, vars: { ...vars, ts } });
+      while (state.eventEntries.length > MAX_EVENT_LINES) {
+        state.eventEntries.pop();
+      }
+      renderEventLog();
+    }
+
+    function appendLogRaw(text) {
+      if (!text) {
+        return;
+      }
+      state.logEntries.push({ type: "raw", text });
+      trimLogEntries();
+      renderSerialLog();
+    }
+
+    function appendLogI18n(key, vars = {}) {
+      state.logEntries.push({ type: "i18n", key, vars });
+      trimLogEntries();
+      renderSerialLog();
+    }
+
+    function appendBadFrame(reason, line) {
+      appendLogI18n(reason);
+      appendLogRaw(line);
+      state.stats.invalidFrames += 1;
+      scheduleRender();
+    }
+
+    function setConnected(connected) {
+      state.connected = connected;
+      statusDot.classList.toggle("connected", connected);
+      statusText.textContent = connected ? t("statusConnected") : t("statusDisconnected");
+      document.getElementById("connectBtn").disabled = connected;
+      document.getElementById("disconnectBtn").disabled = !connected;
+      updatePauseButton();
+    }
+
+    function getInputSampleStride() {
+      const value = Number.parseInt(sampleStrideInput.value, 10);
+      return Number.isFinite(value) && value >= 1 ? value : 3;
+    }
+
+    function getSampleRatioText() {
+      return String(state.appliedSampleStride) + ":1";
+    }
+
+    function getDisplayedCarrierIndices(count) {
+      const stride = state.appliedSampleStride;
+      const indices = [];
+      for (let i = 0; i < count; i += stride) {
+        indices.push(i);
+      }
+      if (indices.length === 0 && count > 0) {
+        indices.push(0);
+      }
+      return indices;
+    }
+
+    function trimHistory() {
+      while (state.frames.length > MAX_HISTORY_FRAMES) {
+        state.frames.shift();
+      }
+    }
+
+    function escapeCsvField(value) {
+      const text = String(value ?? "");
+      if (text.includes(",") || text.includes("\"") || text.includes("\n")) {
+        return "\"" + text.replace(/"/g, "\"\"") + "\"";
+      }
+      return text;
+    }
+
+    function downloadText(filename, content, mimeType) {
+      const blob = new Blob([content], { type: mimeType });
+      const url = URL.createObjectURL(blob);
+      const anchor = document.createElement("a");
+      anchor.href = url;
+      anchor.download = filename;
+      anchor.style.display = "none";
+      document.body.appendChild(anchor);
+      anchor.click();
+      setTimeout(() => {
+        anchor.remove();
+        URL.revokeObjectURL(url);
+      }, 0);
+    }
+
+    function pulseButton(button) {
+      if (!(button instanceof HTMLButtonElement) || button.disabled) {
+        return;
+      }
+      button.classList.remove("button-pressed");
+      void button.offsetWidth;
+      button.classList.add("button-pressed");
+      window.setTimeout(() => {
+        button.classList.remove("button-pressed");
+      }, 140);
+    }
+
+    function parseCsvLine(line) {
+      const result = [];
+      let current = "";
+      let inQuotes = false;
+
+      for (let i = 0; i < line.length; i += 1) {
+        const ch = line[i];
+        if (ch === "\"") {
+          if (inQuotes && line[i + 1] === "\"") {
+            current += "\"";
+            i += 1;
+          } else {
+            inQuotes = !inQuotes;
+          }
+          continue;
+        }
+        if (ch === "," && !inQuotes) {
+          result.push(current);
+          current = "";
+          continue;
+        }
+        current += ch;
+      }
+      result.push(current);
+      return result;
+    }
+
+    function detectHeader(columns) {
+      if (columns.length === DATA_COLUMNS_NAMES.length) {
+        return { header: DATA_COLUMNS_NAMES, format: "legacy/full" };
+      }
+      if (columns.length === DATA_COLUMNS_NAMES_C5C6.length) {
+        return { header: DATA_COLUMNS_NAMES_C5C6, format: "c5/c6" };
+      }
+      if (columns.length === DATA_COLUMNS_NAMES_SHORT.length) {
+        return { header: DATA_COLUMNS_NAMES_SHORT, format: "short" };
+      }
+      return null;
+    }
+
+    function interpolateColor(start, end, value, min, max) {
+      if (max <= min) {
+        return "rgb(" + end.join(",") + ")";
+      }
+      const ratio = (value - min) / (max - min);
+      const rgb = start.map((channel, index) => {
+        return Math.round(channel + (end[index] - channel) * ratio);
+      });
+      return "rgb(" + rgb.join(",") + ")";
+    }
+
+    /**
+     * Tone bands vs subcarrier index (count = CSI len / 2). Ranges follow esp-radar csi_sub_carrier_table.c byte spans / 2 where applicable.
+     */
+    function buildSubcarrierColors(count) {
+      const rules = new Map([
+        [26, { red: [0, 12], green: [13, 25] }],
+        [53, { red: [0, 25], green: [27, 52] }],
+        [57, { red: [0, 27], green: [29, 56] }],
+        [64, { red: [0, 31], green: [32, 63] }],
+        [114, { red: [0, 28], green: [29, 56], yellow: [57, 113] }],
+        [117, { red: [0, 28], green: [29, 56], yellow: [60, 116] }],
+        [128, { red: [0, 31], green: [32, 63], yellow: [64, 127] }],
+        // ESP32/S2/S3/C3: HT20 + STBC, secondary below/above, total_bytes=380（csi_sub_carrier_table.c）
+        [190, { red: [6, 31], green: [33, 58], yellow: [66, 184] }],
+        [192, { red: [0, 63], green: [64, 127], yellow: [128, 191] }],
+        // ESP32C5/C61: HT40 + STBC, total_bytes=468
+        [234, { red: [0, 56], green: [60, 116], yellow: [117, 233] }],
+        [245, { red: [0, 61], green: [62, 122], yellow: [123, 244] }],
+        [256, { red: [0, 63], green: [64, 127], yellow: [128, 255] }],
+        // ESP32/S2/S3/C3: HT40 + STBC, secondary below/above, total_bytes=612
+        [306, { red: [0, 101], green: [102, 203], yellow: [204, 305] }],
+      ]);
+      const rule = rules.get(count);
+      const colors = [];
+      const neutral = "rgb(200,200,200)";
+
+      if (!rule) {
+        const first = Math.max(0, Math.floor(count / 2) - 1);
+        for (let i = 0; i < count; i += 1) {
+          if (i <= first) {
+            colors.push(interpolateColor([70, 10, 10], [255, 70, 70], i, 0, Math.max(first, 1)));
+          } else {
+            colors.push(interpolateColor([10, 70, 20], [70, 255, 120], i, first + 1, Math.max(count - 1, first + 1)));
+          }
+        }
+        return colors;
+      }
+
+      for (let i = 0; i < count; i += 1) {
+        if (rule.red && i >= rule.red[0] && i <= rule.red[1]) {
+          colors.push(interpolateColor([60, 0, 0], [255, 80, 80], i, rule.red[0], rule.red[1]));
+        } else if (rule.green && i >= rule.green[0] && i <= rule.green[1]) {
+          colors.push(interpolateColor([0, 80, 20], [50, 255, 140], i, rule.green[0], rule.green[1]));
+        } else if (rule.yellow && i >= rule.yellow[0] && i <= rule.yellow[1]) {
+          colors.push(interpolateColor([60, 60, 0], [0, 255, 255], i, rule.yellow[0], rule.yellow[1]));
+        } else {
+          colors.push(neutral);
+        }
+      }
+      return colors;
+    }
+
+    function numberOrNaN(value) {
+      const num = Number(value);
+      return Number.isFinite(num) ? num : Number.NaN;
+    }
+
+    function extractMeta(columns, format) {
+      if (format === "c5/c6") {
+        return {
+          id: columns[1] ?? "-",
+          mac: columns[2] ?? "-",
+          rssi: columns[3] ?? "-",
+          rate: columns[4] ?? "-",
+          noiseFloor: columns[5] ?? "-",
+          fftGain: columns[6] ?? "-",
+          agcGain: columns[7] ?? "-",
+          channel: columns[8] ?? "-",
+          localTimestamp: columns[9] ?? "-",
+          rxFormat: columns[11] ?? "-",
+        };
+      }
+      if (format === "legacy/full") {
+        return {
+          id: columns[1] ?? "-",
+          mac: columns[2] ?? "-",
+          rssi: columns[3] ?? "-",
+          rate: columns[4] ?? "-",
+          noiseFloor: columns[14] ?? "-",
+          fftGain: "-",
+          agcGain: "-",
+          channel: columns[16] ?? "-",
+          localTimestamp: columns[18] ?? "-",
+          rxFormat: columns[21] ?? "-",
+        };
+      }
+      return {
+        id: "-",
+        mac: columns[1] ?? "-",
+        rssi: "-",
+        rate: "-",
+        noiseFloor: "-",
+        fftGain: "-",
+        agcGain: "-",
+        channel: "-",
+        localTimestamp: "-",
+        rxFormat: "-",
+      };
+    }
+
+    function parseCsiLine(rawLine) {
+      const csiIndex = rawLine.indexOf(CSI_PREFIX);
+      if (csiIndex < 0) {
+        return { ok: false, nonCsi: true };
+      }
+
+      const line = rawLine.slice(csiIndex);
+      const columns = parseCsvLine(line);
+      const headerInfo = detectHeader(columns);
+      if (!headerInfo) {
+        return { ok: false, error: "parseElementCount", line };
+      }
+
+      const dataLength = Number.parseInt(columns[columns.length - 3], 10);
+      if (!Number.isInteger(dataLength) || dataLength < 0) {
+        return { ok: false, error: "parseInvalidLen", line };
+      }
+
+      let rawData;
+      try {
+        rawData = JSON.parse(columns[columns.length - 1]);
+      } catch (error) {
+        return { ok: false, error: "parseDataIncomplete", line };
+      }
+
+      if (!Array.isArray(rawData)) {
+        return { ok: false, error: "parseDataNotArray", line };
+      }
+
+      if (rawData.length !== dataLength) {
+        return { ok: false, error: "parseLenMismatch", line };
+      }
+
+      const subcarrierCount = Math.floor(dataLength / 2);
+      const real = new Array(subcarrierCount);
+      const imag = new Array(subcarrierCount);
+      const amplitude = new Array(subcarrierCount);
+      const phase = new Array(subcarrierCount);
+
+      for (let i = 0; i < subcarrierCount; i += 1) {
+        const imagValue = numberOrNaN(rawData[i * 2]);
+        const realValue = numberOrNaN(rawData[i * 2 + 1]);
+        real[i] = realValue;
+        imag[i] = imagValue;
+        amplitude[i] = Math.hypot(realValue, imagValue);
+        phase[i] = Math.atan2(imagValue, realValue);
+      }
+
+      const meta = extractMeta(columns, headerInfo.format);
+      return {
+        ok: true,
+        line,
+        columns,
+        header: headerInfo.header,
+        format: headerInfo.format,
+        len: dataLength,
+        subcarrierCount,
+        real,
+        imag,
+        amplitude,
+        phase,
+        meta,
+        fftGain: numberOrNaN(meta.fftGain),
+        agcGain: numberOrNaN(meta.agcGain),
+      };
+    }
+
+    function handleSerialLine(line) {
+      state.stats.totalLines += 1;
+      if (!line.trim()) {
+        return;
+      }
+
+      const parsed = parseCsiLine(line);
+      if (parsed.nonCsi) {
+        appendLogRaw(line);
+        return;
+      }
+
+      state.stats.csiLines += 1;
+      if (!parsed.ok) {
+        appendBadFrame(parsed.error, parsed.line);
+        return;
+      }
+
+      state.stats.validFrames += 1;
+      state.currentFormat = parsed.format;
+      state.lastMeta = {
+        ...parsed.meta,
+        len: parsed.len,
+        subcarrierCount: parsed.subcarrierCount,
+      };
+
+      if (!state.csvHeader || state.csvHeader.length !== parsed.header.length) {
+        state.csvHeader = parsed.header.slice();
+      }
+      state.csvLines.push(parsed.line);
+      state.frames.push(parsed);
+      trimHistory();
+
+      if (state.subcarrierColors.length !== parsed.subcarrierCount) {
+        state.subcarrierColors = buildSubcarrierColors(parsed.subcarrierCount);
+      }
+      scheduleRender();
+    }
+
+    function scheduleRender() {
+      if (state.renderTimer !== null) {
+        return;
+      }
+      state.renderTimer = window.setTimeout(() => {
+        state.renderTimer = null;
+        renderAll();
+      }, RENDER_INTERVAL_MS);
+    }
+
+    function waitMs(ms) {
+      return new Promise((resolve) => window.setTimeout(resolve, ms));
+    }
+
+    function buildLegend(container, items) {
+      container.innerHTML = "";
+      for (const item of items) {
+        const el = document.createElement("div");
+        el.className = "legend-item";
+        el.innerHTML = "<span class=\"legend-dot\" style=\"background:" + item.color + "\"></span><span>" + item.label + "</span>";
+        container.appendChild(el);
+      }
+    }
+
+    function resizeCanvasToDisplaySize(canvas) {
+      const dpr = window.devicePixelRatio || 1;
+      const width = canvas.clientWidth;
+      const height = canvas.clientHeight;
+      const nextWidth = Math.max(1, Math.floor(width * dpr));
+      const nextHeight = Math.max(1, Math.floor(height * dpr));
+      if (canvas.width !== nextWidth || canvas.height !== nextHeight) {
+        canvas.width = nextWidth;
+        canvas.height = nextHeight;
+      }
+      const ctx = canvas.getContext("2d");
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      return { ctx, width, height };
+    }
+
+    function clamp(value, min, max) {
+      return Math.min(Math.max(value, min), max);
+    }
+
+    function nearlyEqual(a, b, epsilon = 1e-6) {
+      return Math.abs(a - b) <= epsilon;
+    }
+
+    function resetChartViewport(view, preserveDerivedState = false) {
+      view.xActive = false;
+      view.yActive = false;
+      view.xMin = null;
+      view.xMax = null;
+      view.yMin = null;
+      view.yMax = null;
+      view.canvas.classList.remove("dragging");
+      if (!preserveDerivedState) {
+        view.plotRect = null;
+        view.baseDomain = null;
+        view.currentDomain = null;
+      }
+      syncHistoryXToPartner(view);
+    }
+
+    function resetAllChartViewports() {
+      Object.values(state.chartViews).forEach((view) => resetChartViewport(view));
+    }
+
+    function syncHistoryXToPartner(view) {
+      const partner = view?.xPartner;
+      if (!partner) {
+        return;
+      }
+      partner.xActive = view.xActive;
+      partner.xMin = view.xMin;
+      partner.xMax = view.xMax;
+    }
+
+    function getViewportAxisRange(viewMin, viewMax, baseMin, baseMax, opts) {
+      const baseSpan = Math.max(baseMax - baseMin, 1e-9);
+      const minSpan = Math.max(baseSpan * 0.005, 1e-6);
+      const maxSpan = baseSpan * 20;
+      let min = Number.isFinite(viewMin) ? viewMin : baseMin;
+      let max = Number.isFinite(viewMax) ? viewMax : baseMax;
+
+      if (!(max > min)) {
+        min = baseMin;
+        max = baseMax;
+      }
+
+      if (opts && opts.freeRange && Number.isFinite(viewMin) && Number.isFinite(viewMax) && viewMax > viewMin) {
+        return { min, max, baseSpan, minSpan };
+      }
+
+      let span = max - min;
+
+      if (span > maxSpan) {
+        const center = (min + max) / 2;
+        min = center - maxSpan / 2;
+        max = center + maxSpan / 2;
+        span = maxSpan;
+      }
+
+      if (span > baseSpan) {
+        return { min, max, baseSpan, minSpan };
+      }
+
+      if (span < minSpan) {
+        const center = (min + max) / 2;
+        min = center - minSpan / 2;
+        max = center + minSpan / 2;
+        span = max - min;
+      }
+
+      if (min < baseMin) {
+        max += baseMin - min;
+        min = baseMin;
+      }
+      if (max > baseMax) {
+        min -= max - baseMax;
+        max = baseMax;
+      }
+      if (min < baseMin) {
+        min = baseMin;
+      }
+      if (max > baseMax) {
+        max = baseMax;
+      }
+      if (max - min < minSpan && minSpan < baseSpan) {
+        const center = clamp((min + max) / 2, baseMin + minSpan / 2, baseMax - minSpan / 2);
+        min = center - minSpan / 2;
+        max = center + minSpan / 2;
+      }
+
+      return { min, max, baseSpan, minSpan };
+    }
+
+    function resolveViewportDomain(view, baseDomain) {
+      const xAxis = getViewportAxisRange(
+        view.xActive ? view.xMin : null,
+        view.xActive ? view.xMax : null,
+        baseDomain.xMin,
+        baseDomain.xMax,
+        { freeRange: view.freeX }
+      );
+      const yAxis = getViewportAxisRange(
+        view.yActive ? view.yMin : null,
+        view.yActive ? view.yMax : null,
+        baseDomain.yMin,
+        baseDomain.yMax
+      );
+      const epsilonX = Math.max(xAxis.baseSpan * 1e-6, 1e-9);
+      const epsilonY = Math.max(yAxis.baseSpan * 1e-6, 1e-9);
+      const xIsFull = nearlyEqual(xAxis.min, baseDomain.xMin, epsilonX)
+        && nearlyEqual(xAxis.max, baseDomain.xMax, epsilonX);
+      const yIsFull = nearlyEqual(yAxis.min, baseDomain.yMin, epsilonY)
+        && nearlyEqual(yAxis.max, baseDomain.yMax, epsilonY);
+
+      view.baseDomain = { ...baseDomain };
+      view.currentDomain = {
+        xMin: xAxis.min,
+        xMax: xAxis.max,
+        yMin: yAxis.min,
+        yMax: yAxis.max,
+      };
+
+      // freeX charts stay in "live" X mode only when the user hasn't interacted yet;
+      // once xActive is true we keep user's X range regardless of the baseDomain.
+      if (view.freeX) {
+        if (!view.xActive && xIsFull) {
+          view.xMin = null;
+          view.xMax = null;
+        } else if (view.xActive) {
+          view.xMin = xAxis.min;
+          view.xMax = xAxis.max;
+        }
+      } else if (xIsFull) {
+        view.xActive = false;
+        view.xMin = null;
+        view.xMax = null;
+      } else {
+        view.xActive = true;
+        view.xMin = xAxis.min;
+        view.xMax = xAxis.max;
+      }
+
+      if (yIsFull) {
+        view.yActive = false;
+        view.yMin = null;
+        view.yMax = null;
+      } else {
+        view.yActive = true;
+        view.yMin = yAxis.min;
+        view.yMax = yAxis.max;
+      }
+
+      return view.currentDomain;
+    }
+
+    function updateChartPlotState(view, plotRect, baseDomain, currentDomain) {
+      view.plotRect = plotRect;
+      view.baseDomain = { ...baseDomain };
+      view.currentDomain = { ...currentDomain };
+    }
+
+    function isPointInPlot(view, clientX, clientY) {
+      if (!view.plotRect) {
+        return false;
+      }
+      const rect = view.canvas.getBoundingClientRect();
+      const x = clientX - rect.left;
+      const y = clientY - rect.top;
+      return x >= view.plotRect.left
+        && x <= view.plotRect.left + view.plotRect.width
+        && y >= view.plotRect.top
+        && y <= view.plotRect.top + view.plotRect.height;
+    }
+
+    function getCanvasLocalPoint(canvas, clientX, clientY) {
+      const rect = canvas.getBoundingClientRect();
+      return {
+        x: clientX - rect.left,
+        y: clientY - rect.top,
+      };
+    }
+
+    function getChartInteractionRegion(view, clientX, clientY) {
+      if (!view.plotRect) {
+        return "outside";
+      }
+      const point = getCanvasLocalPoint(view.canvas, clientX, clientY);
+      const plotLeft = view.plotRect.left;
+      const plotRight = view.plotRect.left + view.plotRect.width;
+      const plotTop = view.plotRect.top;
+      const plotBottom = view.plotRect.top + view.plotRect.height;
+
+      if (point.x >= plotLeft && point.x <= plotRight && point.y >= plotTop && point.y <= plotBottom) {
+        return "plot";
+      }
+      if (point.x >= plotLeft && point.x <= plotRight && point.y > plotBottom && point.y <= view.canvas.clientHeight) {
+        return "x-axis";
+      }
+      if (point.x >= 0 && point.x < plotLeft && point.y >= plotTop && point.y <= plotBottom) {
+        return "y-axis";
+      }
+      return "outside";
+    }
+
+    function zoomAxisRange(currentMin, currentMax, baseMin, baseMax, anchor, factor, opts) {
+      const baseSpan = Math.max(baseMax - baseMin, 1e-9);
+      const minSpan = Math.max(baseSpan * 0.005, 1e-6);
+      const maxSpan = baseSpan * 20;
+      const currentSpan = Math.max(currentMax - currentMin, minSpan);
+      const nextSpan = clamp(currentSpan * factor, minSpan, maxSpan);
+      const ratio = clamp((anchor - currentMin) / currentSpan, 0, 1);
+      let min = anchor - ratio * nextSpan;
+      let max = min + nextSpan;
+      const freeRange = opts && opts.freeRange;
+      if (!freeRange && nextSpan <= baseSpan) {
+        if (min < baseMin) {
+          max += baseMin - min;
+          min = baseMin;
+        }
+        if (max > baseMax) {
+          min -= max - baseMax;
+          max = baseMax;
+        }
+        if (min < baseMin) {
+          min = baseMin;
+        }
+        if (max > baseMax) {
+          max = baseMax;
+        }
+      }
+      return { min, max };
+    }
+
+    function zoomChartViewport(view, clientX, clientY, deltaY) {
+      if (!view.plotRect || !view.baseDomain || !view.currentDomain) {
+        return false;
+      }
+
+      const region = getChartInteractionRegion(view, clientX, clientY);
+      if (region === "outside") {
+        return false;
+      }
+
+      const point = getCanvasLocalPoint(view.canvas, clientX, clientY);
+      const localX = point.x;
+      const locally = point.y;
+      const xRatio = clamp((localX - view.plotRect.left) / Math.max(view.plotRect.width, 1), 0, 1);
+      const yRatio = clamp((locally - view.plotRect.top) / Math.max(view.plotRect.height, 1), 0, 1);
+      const current = view.currentDomain;
+      const anchorX = current.xMin + xRatio * (current.xMax - current.xMin);
+      const anchorY = current.yMax - yRatio * (current.yMax - current.yMin);
+      const factor = Math.exp(deltaY * 0.0012);
+      const xChanged = region !== "y-axis";
+      const yChanged = region !== "x-axis";
+      const nextX = xChanged
+        ? zoomAxisRange(current.xMin, current.xMax, view.baseDomain.xMin, view.baseDomain.xMax, anchorX, factor, { freeRange: view.freeX })
+        : { min: current.xMin, max: current.xMax };
+      const nextY = yChanged
+        ? zoomAxisRange(current.yMin, current.yMax, view.baseDomain.yMin, view.baseDomain.yMax, anchorY, factor)
+        : { min: current.yMin, max: current.yMax };
+      if (xChanged) {
+        view.xActive = true;
+        view.xMin = nextX.min;
+        view.xMax = nextX.max;
+        syncHistoryXToPartner(view);
+      }
+      if (yChanged) {
+        view.yActive = true;
+        view.yMin = nextY.min;
+        view.yMax = nextY.max;
+      }
+      return true;
+    }
+
+    function renderCharts() {
+      drawPhaseLastFrame();
+      drawIqScatter();
+      drawAmplitudeHistory();
+      drawPhaseHistory();
+    }
+
+    function scheduleChartRender() {
+      if (state.chartRenderPending) {
+        return;
+      }
+      state.chartRenderPending = true;
+      window.requestAnimationFrame(() => {
+        state.chartRenderPending = false;
+        renderCharts();
+      });
+    }
+
+    function stopActiveChartDrag() {
+      if (!state.activeChartDrag) {
+        return;
+      }
+      state.activeChartDrag.view.canvas.classList.remove("dragging");
+      state.activeChartDrag = null;
+    }
+
+    function drawEmpty(canvas, text) {
+      const { ctx, width, height } = resizeCanvasToDisplaySize(canvas);
+      ctx.clearRect(0, 0, width, height);
+      ctx.fillStyle = "rgba(255,255,255,0.65)";
+      ctx.font = "14px sans-serif";
+      ctx.fillText(text, 18, 28);
+    }
+
+    function drawLineChart(canvas, seriesList, options) {
+      const { ctx, width, height } = resizeCanvasToDisplaySize(canvas);
+      ctx.clearRect(0, 0, width, height);
+
+      const padding = { top: 18, right: 20, bottom: 30, left: 54 };
+      const plotWidth = width - padding.left - padding.right;
+      const plotHeight = height - padding.top - padding.bottom;
+      if (plotWidth <= 0 || plotHeight <= 0) {
+        return;
+      }
+
+      const allValues = [];
+      const allXValues = [];
+      const skipAllX = Number.isFinite(options.baseXMin) && Number.isFinite(options.baseXMax);
+      const needAutoY = !Number.isFinite(options.min) || !Number.isFinite(options.max);
+      for (const series of seriesList) {
+        if (needAutoY) {
+          for (const value of series.values) {
+            if (Number.isFinite(value)) {
+              allValues.push(value);
+            }
+          }
+        } else if (series.values.length > 0) {
+          allValues.push(0);
+        }
+        if (!skipAllX) {
+          const xValues = series.xValues || options.xValues || [];
+          for (let index = 0; index < xValues.length; index += 1) {
+            if (Number.isFinite(xValues[index])) {
+              allXValues.push(xValues[index]);
+            }
+          }
+        }
+      }
+
+      if (allValues.length === 0) {
+        drawEmpty(canvas, t("emptyNoData"));
+        return;
+      }
+
+      let min = Number.isFinite(options.min) ? options.min : Math.min(...allValues);
+      let max = Number.isFinite(options.max) ? options.max : Math.max(...allValues);
+      if (min === max) {
+        min -= 1;
+        max += 1;
+      }
+      if (!Number.isFinite(options.min) || !Number.isFinite(options.max)) {
+        const paddingValue = (max - min) * 0.08 || 1;
+        min -= paddingValue;
+        max += paddingValue;
+      }
+
+      let xMin = allXValues.length > 0 ? Math.min(...allXValues) : 0;
+      let xMax = allXValues.length > 0 ? Math.max(...allXValues) : Math.max(seriesList.reduce((acc, item) => Math.max(acc, item.values.length), 0) - 1, 0);
+      if (Number.isFinite(options.baseXMin)) {
+        xMin = options.baseXMin;
+      }
+      if (Number.isFinite(options.baseXMax)) {
+        xMax = options.baseXMax;
+      }
+      if (xMin === xMax) {
+        xMin -= 1;
+        xMax += 1;
+      }
+
+      const baseDomain = { xMin, xMax, yMin: min, yMax: max };
+      const currentDomain = options.view ? resolveViewportDomain(options.view, baseDomain) : baseDomain;
+      xMin = currentDomain.xMin;
+      xMax = currentDomain.xMax;
+      min = currentDomain.yMin;
+      max = currentDomain.yMax;
+      if (options.view) {
+        updateChartPlotState(options.view, {
+          left: padding.left,
+          top: padding.top,
+          width: plotWidth,
+          height: plotHeight,
+        }, baseDomain, currentDomain);
+      }
+
+      ctx.strokeStyle = "rgba(255,255,255,0.08)";
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      for (let i = 0; i <= 4; i += 1) {
+        const y = padding.top + (plotHeight * i) / 4;
+        ctx.moveTo(padding.left, y);
+        ctx.lineTo(padding.left + plotWidth, y);
+      }
+      const xTickCount = Math.max(2, options.xTickCount || 5);
+      for (let i = 0; i < xTickCount; i += 1) {
+        const ratio = xTickCount === 1 ? 0 : i / (xTickCount - 1);
+        const x = padding.left + plotWidth * ratio;
+        ctx.moveTo(x, padding.top);
+        ctx.lineTo(x, padding.top + plotHeight);
+      }
+      ctx.stroke();
+
+      ctx.fillStyle = "rgba(255,255,255,0.60)";
+      ctx.font = "12px sans-serif";
+      for (let i = 0; i <= 4; i += 1) {
+        const ratio = 1 - i / 4;
+        const value = min + (max - min) * ratio;
+        const y = padding.top + (plotHeight * i) / 4 + 4;
+        ctx.fillText(options.formatY(value), 8, y);
+      }
+      const formatX = options.formatX || ((value) => String(Math.round(value)));
+      ctx.save();
+      for (let i = 0; i < xTickCount; i += 1) {
+        const ratio = xTickCount === 1 ? 0 : i / (xTickCount - 1);
+        const value = xMin + (xMax - xMin) * ratio;
+        const x = padding.left + plotWidth * ratio;
+        if (i === 0) {
+          ctx.textAlign = "left";
+        } else if (i === xTickCount - 1) {
+          ctx.textAlign = "right";
+        } else {
+          ctx.textAlign = "center";
+        }
+        ctx.fillText(formatX(value), x, height - 8);
+      }
+      ctx.restore();
+
+      ctx.save();
+      ctx.beginPath();
+      ctx.rect(padding.left, padding.top, plotWidth, plotHeight);
+      ctx.clip();
+      for (const series of seriesList) {
+        ctx.beginPath();
+        ctx.strokeStyle = series.color;
+        ctx.lineWidth = series.width || 1.1;
+        let started = false;
+        const xValues = series.xValues || options.xValues || [];
+        for (let index = 0; index < series.values.length; index += 1) {
+          const value = series.values[index];
+          if (!Number.isFinite(value)) {
+            started = false;
+            continue;
+          }
+          const xValue = Number.isFinite(xValues[index]) ? xValues[index] : index;
+          if (xValue < xMin || xValue > xMax) {
+            started = false;
+            continue;
+          }
+          const x = padding.left + ((xValue - xMin) / Math.max(xMax - xMin, 1)) * plotWidth;
+          const y = padding.top + ((max - value) / Math.max(max - min, 1e-9)) * plotHeight;
+          if (!started) {
+            ctx.moveTo(x, y);
+            started = true;
+          } else {
+            ctx.lineTo(x, y);
+          }
+        }
+        ctx.stroke();
+      }
+      ctx.restore();
+    }
+
+    function unwrapPhases(phases) {
+      const result = new Array(phases.length);
+      let offset = 0;
+      let prev = Number.NaN;
+      for (let i = 0; i < phases.length; i += 1) {
+        const value = phases[i];
+        if (!Number.isFinite(value)) {
+          result[i] = Number.NaN;
+          prev = Number.NaN;
+          continue;
+        }
+        if (Number.isFinite(prev)) {
+          const diff = value - prev;
+          if (diff > Math.PI) {
+            offset -= 2 * Math.PI;
+          } else if (diff < -Math.PI) {
+            offset += 2 * Math.PI;
+          }
+        }
+        prev = value;
+        result[i] = value + offset;
+      }
+      return result;
+    }
+
+    function drawPhaseLastFrame() {
+      if (!state.chartEnabled.phase) {
+        return;
+      }
+      const source = getDisplaySource();
+      const frame = source.frames[source.frames.length - 1];
+      if (!frame || frame.phase.length === 0) {
+        resetChartViewport(state.chartViews.phase);
+        drawEmpty(phaseCanvas, t("emptyWaiting"));
+        return;
+      }
+
+      const sampledIndices = getDisplayedCarrierIndices(frame.phase.length);
+      const sampledPhases = sampledIndices.map((index) => frame.phase[index]);
+      const unwrap = state.phaseUnwrap === true;
+      let displayPhases = unwrap ? unwrapPhases(sampledPhases) : sampledPhases;
+      if (unwrap && state.phaseCenterZero === true && displayPhases.length > 0) {
+        const centerIdx = Math.floor(displayPhases.length / 2);
+        const centerValue = displayPhases[centerIdx];
+        if (Number.isFinite(centerValue)) {
+          displayPhases = displayPhases.map((value) =>
+            Number.isFinite(value) ? value - centerValue : value,
+          );
+        }
+      }
+
+      const chartOptions = {
+        formatY: (value) => value.toFixed(2),
+        formatX: (value) => String(Math.round(value)),
+        xTickCount: 7,
+        view: state.chartViews.phase,
+      };
+      if (!unwrap) {
+        chartOptions.min = -Math.PI;
+        chartOptions.max = Math.PI;
+      } else {
+        let absMax = 0;
+        for (const value of displayPhases) {
+          if (Number.isFinite(value)) {
+            const abs = Math.abs(value);
+            if (abs > absMax) {
+              absMax = abs;
+            }
+          }
+        }
+        if (absMax < 1e-6) {
+          absMax = Math.PI;
+        }
+        absMax *= 1.1;
+        chartOptions.min = -absMax;
+        chartOptions.max = absMax;
+      }
+
+      drawLineChart(phaseCanvas, [
+        {
+          color: "#59c8ff",
+          width: 2,
+          values: displayPhases,
+          xValues: sampledIndices,
+        },
+      ], chartOptions);
+    }
+
+    function drawIqScatter() {
+      if (!state.chartEnabled.iq) {
+        return;
+      }
+      const source = getDisplaySource();
+      const frame = source.frames[source.frames.length - 1];
+      if (!frame || frame.real.length === 0) {
+        resetChartViewport(state.chartViews.iq);
+        drawEmpty(iqCanvas, t("emptyWaiting"));
+        return;
+      }
+
+      const { ctx, width, height } = resizeCanvasToDisplaySize(iqCanvas);
+      ctx.clearRect(0, 0, width, height);
+
+      const padding = 28;
+      const stride = state.appliedSampleStride;
+      const values = [];
+      for (let i = 0; i < frame.real.length; i += 1) {
+        if ((i % stride === 0) && Number.isFinite(frame.real[i]) && Number.isFinite(frame.imag[i])) {
+          values.push(frame.real[i], frame.imag[i]);
+        }
+      }
+      if (values.length === 0) {
+        resetChartViewport(state.chartViews.iq);
+        drawEmpty(iqCanvas, t("emptyNoIq"));
+        return;
+      }
+
+      let maxAbs = Math.max(...values.map((value) => Math.abs(value)));
+      if (maxAbs < 10) {
+        maxAbs = 10;
+      }
+      maxAbs *= 1.15;
+      const baseDomain = {
+        xMin: -maxAbs,
+        xMax: maxAbs,
+        yMin: -maxAbs,
+        yMax: maxAbs,
+      };
+      const currentDomain = resolveViewportDomain(state.chartViews.iq, baseDomain);
+
+      const plotWidth = width - padding * 2;
+      const plotHeight = height - padding * 2;
+      updateChartPlotState(state.chartViews.iq, {
+        left: padding,
+        top: padding,
+        width: plotWidth,
+        height: plotHeight,
+      }, baseDomain, currentDomain);
+      const xRange = Math.max(currentDomain.xMax - currentDomain.xMin, 1e-9);
+      const yRange = Math.max(currentDomain.yMax - currentDomain.yMin, 1e-9);
+      const zeroX = padding + ((0 - currentDomain.xMin) / xRange) * plotWidth;
+      const zeroY = padding + ((currentDomain.yMax - 0) / yRange) * plotHeight;
+      const showZeroX = currentDomain.xMin <= 0 && currentDomain.xMax >= 0;
+      const showZeroY = currentDomain.yMin <= 0 && currentDomain.yMax >= 0;
+      const labelAxisX = clamp(zeroX, padding + 6, width - padding - 42);
+      const labelAxisY = clamp(zeroY, padding + 14, height - padding - 6);
+
+      ctx.strokeStyle = "rgba(255,255,255,0.10)";
+      if (showZeroX || showZeroY) {
+        ctx.beginPath();
+        if (showZeroX) {
+          ctx.moveTo(zeroX, padding);
+          ctx.lineTo(zeroX, height - padding);
+        }
+        if (showZeroY) {
+          ctx.moveTo(padding, zeroY);
+          ctx.lineTo(width - padding, zeroY);
+        }
+        ctx.stroke();
+      }
+
+      ctx.strokeStyle = "rgba(255,255,255,0.08)";
+      ctx.strokeRect(padding, padding, plotWidth, plotHeight);
+
+      ctx.save();
+      ctx.beginPath();
+      ctx.rect(padding, padding, plotWidth, plotHeight);
+      ctx.clip();
+      for (let i = 0; i < frame.real.length; i += 1) {
+        if (i % stride !== 0) {
+          continue;
+        }
+        const realValue = frame.real[i];
+        const imagValue = frame.imag[i];
+        if (!Number.isFinite(realValue) || !Number.isFinite(imagValue)) {
+          continue;
+        }
+        if (realValue < currentDomain.xMin || realValue > currentDomain.xMax || imagValue < currentDomain.yMin || imagValue > currentDomain.yMax) {
+          continue;
+        }
+        const x = padding + ((realValue - currentDomain.xMin) / xRange) * plotWidth;
+        const y = padding + ((currentDomain.yMax - imagValue) / yRange) * plotHeight;
+        ctx.beginPath();
+        ctx.fillStyle = source.subcarrierColors[i] || "rgba(220,220,220,0.9)";
+        ctx.arc(x, y, 3.4, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      ctx.restore();
+
+      ctx.fillStyle = "rgba(255,255,255,0.60)";
+      ctx.font = "12px sans-serif";
+      ctx.fillText(currentDomain.xMin.toFixed(1), padding, labelAxisY - 6);
+      ctx.fillText(currentDomain.xMax.toFixed(1), width - padding - 36, labelAxisY - 6);
+      ctx.fillText(currentDomain.yMax.toFixed(1), labelAxisX + 6, padding + 14);
+      ctx.fillText(currentDomain.yMin.toFixed(1), labelAxisX + 6, height - padding - 6);
+    }
+
+    function buildHistorySeriesFromFrames(extractor) {
+      const source = getDisplaySource();
+      const frames = source.frames;
+      if (frames.length === 0) {
+        return [];
+      }
+
+      const subcarrierCount = frames[frames.length - 1].subcarrierCount;
+      const series = [];
+      const sampledIndices = getDisplayedCarrierIndices(subcarrierCount);
+
+      for (const carrier of sampledIndices) {
+        const values = frames.map((frame) => {
+          if (frame.subcarrierCount !== subcarrierCount) {
+            return Number.NaN;
+          }
+          return extractor(frame, carrier);
+        });
+        series.push({
+          color: source.subcarrierColors[carrier] || "rgba(220,220,220,0.55)",
+          values,
+          width: 1,
+        });
+      }
+
+      return series;
+    }
+
+    function buildHistoryPacketIdAxisValues() {
+      const source = getDisplaySource();
+      const frames = source.frames;
+      return frames.map((frame, index) => {
+        const packetId = Number.parseInt(frame?.meta?.id, 10);
+        return Number.isFinite(packetId) ? packetId : index;
+      });
+    }
+
+    function getHistoryLiveWindowX(packetIds) {
+      if (packetIds.length === 0) {
+        return null;
+      }
+      let firstId = Number.POSITIVE_INFINITY;
+      let lastId = Number.NEGATIVE_INFINITY;
+      for (let i = 0; i < packetIds.length; i += 1) {
+        const v = packetIds[i];
+        if (!Number.isFinite(v)) continue;
+        if (v < firstId) firstId = v;
+        if (v > lastId) lastId = v;
+      }
+      if (!Number.isFinite(firstId) || !Number.isFinite(lastId)) {
+        return null;
+      }
+      const liveMin = Math.max(firstId, lastId - (DEFAULT_HISTORY_WINDOW_SIZE - 1));
+      return { min: liveMin, max: lastId };
+    }
+
+    function drawAmplitudeHistory() {
+      if (!state.chartEnabled.amplitude) {
+        return;
+      }
+      const source = getDisplaySource();
+      if (source.frames.length === 0) {
+        resetChartViewport(state.chartViews.amplitude);
+        drawEmpty(amplitudeCanvas, t("emptyWaiting"));
+        return;
+      }
+
+      const series = buildHistorySeriesFromFrames((frame, carrier) => frame.amplitude[carrier]);
+      const packetIds = buildHistoryPacketIdAxisValues();
+      const liveWindow = getHistoryLiveWindowX(packetIds);
+      const view = state.chartViews.amplitude;
+      const xLo = view.xActive && Number.isFinite(view.xMin) ? view.xMin : (liveWindow ? liveWindow.min : -Infinity);
+      const xHi = view.xActive && Number.isFinite(view.xMax) ? view.xMax : (liveWindow ? liveWindow.max : Infinity);
+      let yMax = 0;
+      for (const item of series) {
+        for (let i = 0; i < item.values.length; i += 1) {
+          const value = item.values[i];
+          const xv = packetIds[i];
+          if (!Number.isFinite(value) || !Number.isFinite(xv)) continue;
+          if (xv < xLo || xv > xHi) continue;
+          if (value > yMax) yMax = value;
+        }
+      }
+      if (!(yMax > 0)) {
+        yMax = 1;
+      }
+      yMax *= 1.08;
+      drawLineChart(amplitudeCanvas, series, {
+        min: 0,
+        max: yMax,
+        formatY: (value) => value.toFixed(1),
+        formatX: (value) => String(Math.round(value)),
+        xValues: packetIds,
+        xTickCount: 6,
+        view,
+        baseXMin: liveWindow ? liveWindow.min : undefined,
+        baseXMax: liveWindow ? liveWindow.max : undefined,
+      });
+    }
+
+    function drawPhaseHistory() {
+      if (!state.chartEnabled.phaseHistory) {
+        return;
+      }
+      const source = getDisplaySource();
+      if (source.frames.length === 0) {
+        resetChartViewport(state.chartViews.phaseHistory);
+        drawEmpty(phaseHistoryCanvas, t("emptyWaiting"));
+        return;
+      }
+
+      const series = buildHistorySeriesFromFrames((frame, carrier) => frame.phase[carrier]);
+      const packetIds = buildHistoryPacketIdAxisValues();
+      const liveWindow = getHistoryLiveWindowX(packetIds);
+      drawLineChart(phaseHistoryCanvas, series, {
+        min: -Math.PI,
+        max: Math.PI,
+        formatY: (value) => value.toFixed(2),
+        formatX: (value) => String(Math.round(value)),
+        xValues: packetIds,
+        xTickCount: 6,
+        view: state.chartViews.phaseHistory,
+        baseXMin: liveWindow ? liveWindow.min : undefined,
+        baseXMax: liveWindow ? liveWindow.max : undefined,
+      });
+    }
+
+    function statCard(label, value) {
+      return "<div class=\"stat-card\"><div class=\"label\">" + label + "</div><div class=\"value\">" + value + "</div></div>";
+    }
+
+    function renderStats() {
+      const source = getDisplaySource();
+      const meta = source.lastMeta;
+      if (!meta) {
+        statGrid.innerHTML = [
+          statCard(t("statCsiLines"), String(source.stats.csiLines)),
+          statCard(t("statLatestPacketId"), "-"),
+          statCard(t("statMac"), "-"),
+          statCard(t("statRssi"), "-"),
+          statCard(t("statRate"), "-"),
+          statCard(t("statFftGain"), "-"),
+          statCard(t("statAgcGain"), "-"),
+          statCard(t("statChannel"), "-"),
+          statCard(t("statRxFormat"), "-"),
+        ].join("");
+        return;
+      }
+
+      statGrid.innerHTML = [
+        statCard(t("statCsiLines"), String(source.stats.csiLines)),
+        statCard(t("statLatestPacketId"), String(meta.id)),
+        statCard(t("statMac"), String(meta.mac)),
+        statCard(t("statRssi"), String(meta.rssi)),
+        statCard(t("statRate"), String(meta.rate)),
+        statCard(t("statFftGain"), String(meta.fftGain)),
+        statCard(t("statAgcGain"), String(meta.agcGain)),
+        statCard(t("statChannel"), String(meta.channel)),
+        statCard(t("statRxFormat"), String(meta.rxFormat ?? "-")),
+      ].join("");
+    }
+
+    function renderSubcarrierColorMap() {
+      const source = getDisplaySource();
+      const total = source.lastMeta?.subcarrierCount || 0;
+      const sampledIndices = total > 0 ? getDisplayedCarrierIndices(total) : [];
+      const colorMapDesc = document.getElementById("colorMapDesc");
+      if (total === 0 || sampledIndices.length === 0) {
+        colorMapDesc.textContent = t("colorMapEmpty");
+        subcarrierColorMap.innerHTML = "";
+        return;
+      }
+
+      colorMapDesc.textContent = t("colorMapDesc", {
+        ratio: getSampleRatioText(),
+        shown: sampledIndices.length,
+        total,
+      });
+      subcarrierColorMap.innerHTML = sampledIndices.map((index) => {
+        const color = source.subcarrierColors[index] || "rgb(200,200,200)";
+        return "<div class=\"map-item\"><span class=\"map-dot\" style=\"background:" + color + "\"></span><span>" + index + "</span></div>";
+      }).join("");
+    }
+
+    function renderAll(force = false) {
+      if (state.uiPaused && !force) {
+        return;
+      }
+      const source = getDisplaySource();
+      validCountText.textContent = String(source.stats.validFrames);
+      invalidCountText.textContent = String(source.stats.invalidFrames);
+      formatText.textContent = source.currentFormat;
+      subcarrierCountText.textContent = String(source.lastMeta?.subcarrierCount || 0);
+      sampleRatioHelp.textContent = getSampleRatioText();
+
+      renderStats();
+      buildLegend(amplitudeLegend, [
+        { label: t("legendSubcarrier"), color: "#59c8ff" },
+      ]);
+      buildLegend(phaseLegend, [
+        { label: t("legendPhaseHistory"), color: "#59c8ff" },
+      ]);
+      renderSubcarrierColorMap();
+      renderCharts();
+    }
+
+    function applyChartEnabled(key) {
+      const config = chartToggleConfigs.find((item) => item.key === key);
+      if (!config) {
+        return;
+      }
+      const card = document.getElementById(config.cardId);
+      const enabled = state.chartEnabled[key] === true;
+      if (card) {
+        card.classList.toggle("chart-disabled", !enabled);
+      }
+      if (!enabled) {
+        const view = state.chartViews[config.viewKey];
+        if (view) {
+          resetChartViewport(view);
+        }
+      }
+    }
+
+    function applyAllChartEnabled() {
+      chartToggleConfigs.forEach((config) => applyChartEnabled(config.key));
+    }
+
+    function applySampleStride() {
+      const stride = getInputSampleStride();
+      sampleStrideInput.value = String(stride);
+      state.appliedSampleStride = stride;
+      scheduleRender();
+      addEvent("eventSampleStrideApplied", { stride });
+    }
+
+    function updatePauseButton() {
+      const connected = state.connected;
+      const paused = state.uiPaused;
+      pauseUiBtn.disabled = !connected;
+      pauseUiBtn.textContent = !connected ? t("stopUiBtn") : (paused ? t("resumeUiBtn") : t("pauseUiBtn"));
+      pauseUiBtn.classList.toggle("stopped", !connected);
+      pauseUiBtn.classList.toggle("paused", connected && paused);
+      pauseUiBtn.classList.toggle("running", connected && !paused);
+    }
+
+    function toggleUiPause() {
+      if (!state.connected) {
+        return;
+      }
+      state.uiPaused = !state.uiPaused;
+      updatePauseButton();
+      if (state.uiPaused) {
+        state.pausedSnapshot = createPausedSnapshot();
+        addEvent("eventUiPaused");
+        return;
+      }
+      state.pausedSnapshot = null;
+      addEvent("eventUiResumed");
+      renderEventLog(true);
+      renderSerialLog(true);
+      renderAll(true);
+    }
+
+    function setText(id, text) {
+      const element = document.getElementById(id);
+      if (element) {
+        element.textContent = text;
+      }
+    }
+
+    function setHtml(id, html) {
+      const element = document.getElementById(id);
+      if (element) {
+        element.innerHTML = html;
+      }
+    }
+
+    function applyTranslations() {
+      document.documentElement.lang = state.language === "zh" ? "zh-CN" : "en";
+      document.title = t("pageTitle");
+      setText("appTitle", t("appTitle"));
+      setText("baudRateLabel", t("baudRateLabel"));
+      baudRateText.textContent = "921600";
+      setText("sampleStrideLabel", t("sampleStrideLabel"));
+      setText("sampleStrideDesc", t("sampleStrideDesc"));
+      setText("applySampleStrideBtn", t("applySampleStrideBtn"));
+      setText("pauseHint", t("pauseHint"));
+      setText("connectBtn", t("connectBtn"));
+      setText("disconnectBtn", t("disconnectBtn"));
+      setText("clearChartsBtn", t("clearChartsBtn"));
+      setText("clearLogsBtn", t("clearLogsBtn"));
+      setText("downloadCsvBtn", t("downloadCsvBtn"));
+      setText("downloadLogBtn", t("downloadLogBtn"));
+      setText("eventTitle", t("eventTitle"));
+      setText("colorMapTitle", t("colorMapTitle"));
+      setText("usageGuideTitle", t("usageGuideTitle"));
+      setHtml("usageGuideBody", t("usageGuideBody"));
+      setText("validCountLabel", t("validCountLabel"));
+      setText("invalidCountLabel", t("invalidCountLabel"));
+      setText("logCountLabel", t("logCountLabel"));
+      setText("subcarrierCountLabel", t("subcarrierCountLabel"));
+      setText("formatLabel", t("formatLabel"));
+      setText("currentStateTitle", t("currentStateTitle"));
+      setText("phaseChartTitle", t("phaseChartTitle"));
+      setText("iqChartTitle", t("iqChartTitle"));
+      setText("amplitudeChartTitle", t("amplitudeChartTitle"));
+      setText("phaseHistoryChartTitle", t("phaseHistoryChartTitle"));
+      setText("serialLogTitle", t("serialLogTitle"));
+      setText("phaseChartDesc", t("phaseChartDesc"));
+      setText("phaseUnwrapLabel", t("phaseUnwrapLabel"));
+      setText("phaseCenterZeroLabel", t("phaseCenterZeroLabel"));
+      document.querySelectorAll(".chart-enable-label").forEach((el) => {
+        el.textContent = t("chartEnableLabel");
+      });
+      setText("iqChartDesc", t("iqChartDesc"));
+      setText("amplitudeChartDesc", t("amplitudeChartDesc"));
+      setText("phaseHistoryChartDesc", t("phaseHistoryChartDesc"));
+      document.getElementById("langZhBtn").classList.toggle("active", state.language === "zh");
+      document.getElementById("langEnBtn").classList.toggle("active", state.language === "en");
+      document.getElementById("langZhBtn").setAttribute("aria-pressed", state.language === "zh" ? "true" : "false");
+      document.getElementById("langEnBtn").setAttribute("aria-pressed", state.language === "en" ? "true" : "false");
+      updatePauseButton();
+      setConnected(state.connected);
+      renderEventLog(!state.uiPaused);
+      renderSerialLog(!state.uiPaused);
+      renderAll(!state.uiPaused);
+    }
+
+    async function connectSerial() {
+      if (!("serial" in navigator)) {
+        addEvent("eventUnsupported");
+        return;
+      }
+      try {
+        const baudRate = 921600;
+        state.uiPaused = false;
+        state.port = await navigator.serial.requestPort();
+        await state.port.open({
+          baudRate,
+          dataBits: 8,
+          stopBits: 1,
+          parity: "none",
+          flowControl: "none",
+          bufferSize: 16384,
+        });
+        setConnected(true);
+        addEvent("eventConnectSuccess", { baudRate });
+        startReadLoop();
+      } catch (error) {
+        addEvent("eventConnectFailed", { message: error.message });
+      }
+    }
+
+    async function disconnectSerial(logMessage = true) {
+      if (!state.port || state.disconnecting) {
+        return;
+      }
+      state.disconnecting = true;
+      try {
+        if (state.reader) {
+          try {
+            await state.reader.cancel();
+          } catch (error) {
+            void error;
+          }
+          for (let attempt = 0; attempt < 30 && state.reader; attempt += 1) {
+            await waitMs(10);
+          }
+        }
+      } finally {
+        try {
+          await state.port.close();
+        } catch (error) {
+          void error;
+        }
+        state.uiPaused = false;
+        state.port = null;
+        state.reader = null;
+        state.disconnecting = false;
+        updatePauseButton();
+        setConnected(false);
+        if (logMessage) {
+          addEvent("eventDisconnected");
+        }
+      }
+    }
+
+    async function startReadLoop() {
+      if (!state.port?.readable) {
+        return;
+      }
+      const decoder = new TextDecoder();
+      let buffer = "";
+
+      try {
+        state.reader = state.port.readable.getReader();
+        while (true) {
+          const { value, done } = await state.reader.read();
+          if (done) {
+            break;
+          }
+          buffer += decoder.decode(value, { stream: true });
+          const lines = buffer.split("\n");
+          buffer = lines.pop() || "";
+          for (const rawLine of lines) {
+            handleSerialLine(rawLine.replace(/\r$/, ""));
+          }
+        }
+      } catch (error) {
+        if (!state.disconnecting) {
+          addEvent("eventReadError", { message: error.message });
+        }
+      } finally {
+        if (state.reader) {
+          state.reader.releaseLock();
+          state.reader = null;
+        }
+        if (state.connected && !state.disconnecting) {
+          await disconnectSerial(false);
+          addEvent("eventReadEnded");
+        }
+      }
+    }
+
+    function clearCharts() {
+      state.frames = [];
+      state.csvLines = [];
+      state.csvHeader = null;
+      state.subcarrierColors = [];
+      state.lastMeta = null;
+      state.pausedSnapshot = null;
+      resetAllChartViewports();
+      scheduleRender();
+      addEvent("eventClearedCharts");
+    }
+
+    function clearLogs() {
+      state.logEntries = [];
+      serialLog.textContent = "";
+      logCountText.textContent = "0";
+      addEvent("eventClearedLogs");
+    }
+
+    function downloadCsv() {
+      if (state.csvLines.length === 0) {
+        addEvent("eventNoCsv");
+        return;
+      }
+      const count = state.csvLines.length;
+      const header = state.csvHeader ? state.csvHeader.map(escapeCsvField).join(",") + "\n" : "";
+      const content = header + state.csvLines.join("\n") + "\n";
+      downloadText("csi_data.csv", content, "text/csv;charset=utf-8");
+      addEvent("eventCsvExported", { count });
+    }
+
+    function downloadLog() {
+      if (state.logEntries.length === 0) {
+        addEvent("eventNoLog");
+        return;
+      }
+      downloadText("csi_data_log.txt", state.logEntries.map(stringifyEntry).join("\n") + "\n", "text/plain;charset=utf-8");
+      addEvent("eventLogExported");
+    }
+
+    function bindChartInteractions(canvas, view) {
+      canvas.addEventListener("mousedown", (event) => {
+        if (event.button !== 0 || !isPointInPlot(view, event.clientX, event.clientY)) {
+          return;
+        }
+        event.preventDefault();
+        state.activeChartDrag = {
+          view,
+          startClientX: event.clientX,
+          startClientY: event.clientY,
+          startDomain: { ...view.currentDomain },
+        };
+        canvas.classList.add("dragging");
+      });
+
+      canvas.addEventListener("wheel", (event) => {
+        if (!zoomChartViewport(view, event.clientX, event.clientY, event.deltaY)) {
+          return;
+        }
+        event.preventDefault();
+        scheduleChartRender();
+      }, { passive: false });
+
+      canvas.addEventListener("dblclick", () => {
+        resetChartViewport(view);
+        scheduleChartRender();
+      });
+    }
+
+    function bindEvents() {
+      document.querySelectorAll("button").forEach((button) => {
+        button.addEventListener("click", () => pulseButton(button));
+      });
+      document.getElementById("connectBtn").addEventListener("click", connectSerial);
+      document.getElementById("disconnectBtn").addEventListener("click", () => disconnectSerial(true));
+      document.getElementById("clearChartsBtn").addEventListener("click", clearCharts);
+      document.getElementById("clearLogsBtn").addEventListener("click", clearLogs);
+      document.getElementById("downloadCsvBtn").addEventListener("click", downloadCsv);
+      document.getElementById("downloadLogBtn").addEventListener("click", downloadLog);
+      document.getElementById("applySampleStrideBtn").addEventListener("click", applySampleStride);
+      pauseUiBtn.addEventListener("click", toggleUiPause);
+      document.getElementById("langZhBtn").addEventListener("click", () => {
+        state.language = "zh";
+        applyTranslations();
+      });
+      document.getElementById("langEnBtn").addEventListener("click", () => {
+        state.language = "en";
+        applyTranslations();
+      });
+      sampleStrideInput.addEventListener("change", () => {
+        sampleStrideInput.value = String(getInputSampleStride());
+      });
+      const syncPhaseCenterZeroEnabled = () => {
+        if (!phaseCenterZeroToggle) {
+          return;
+        }
+        const enabled = state.phaseUnwrap === true;
+        phaseCenterZeroToggle.disabled = !enabled;
+        const wrapper = phaseCenterZeroToggle.closest(".toggle-switch");
+        if (wrapper) {
+          wrapper.classList.toggle("is-disabled", !enabled);
+        }
+        if (!enabled && state.phaseCenterZero) {
+          state.phaseCenterZero = false;
+          phaseCenterZeroToggle.checked = false;
+        }
+      };
+      if (phaseUnwrapToggle) {
+        phaseUnwrapToggle.checked = state.phaseUnwrap === true;
+        phaseUnwrapToggle.addEventListener("change", () => {
+          state.phaseUnwrap = phaseUnwrapToggle.checked;
+          syncPhaseCenterZeroEnabled();
+          resetChartViewport(state.chartViews.phase);
+          if (state.uiPaused) {
+            renderAll(true);
+          } else {
+            scheduleRender();
+          }
+        });
+      }
+      if (phaseCenterZeroToggle) {
+        phaseCenterZeroToggle.checked = state.phaseCenterZero === true;
+        phaseCenterZeroToggle.addEventListener("change", () => {
+          if (phaseCenterZeroToggle.disabled) {
+            return;
+          }
+          state.phaseCenterZero = phaseCenterZeroToggle.checked;
+          resetChartViewport(state.chartViews.phase);
+          if (state.uiPaused) {
+            renderAll(true);
+          } else {
+            scheduleRender();
+          }
+        });
+      }
+      syncPhaseCenterZeroEnabled();
+      chartToggleConfigs.forEach((config) => {
+        const input = document.getElementById(config.inputId);
+        if (!input) {
+          return;
+        }
+        input.checked = state.chartEnabled[config.key] === true;
+        input.addEventListener("change", () => {
+          state.chartEnabled[config.key] = input.checked;
+          applyChartEnabled(config.key);
+          if (state.uiPaused) {
+            renderAll(true);
+          } else {
+            scheduleRender();
+          }
+        });
+      });
+      applyAllChartEnabled();
+      bindChartInteractions(phaseCanvas, state.chartViews.phase);
+      bindChartInteractions(iqCanvas, state.chartViews.iq);
+      bindChartInteractions(amplitudeCanvas, state.chartViews.amplitude);
+      bindChartInteractions(phaseHistoryCanvas, state.chartViews.phaseHistory);
+      window.addEventListener("mousemove", (event) => {
+        const drag = state.activeChartDrag;
+        if (!drag?.view?.plotRect || !drag.startDomain) {
+          return;
+        }
+        if ((event.buttons & 1) === 0) {
+          stopActiveChartDrag();
+          return;
+        }
+        const view = drag.view;
+        const xSpan = drag.startDomain.xMax - drag.startDomain.xMin;
+        const ySpan = drag.startDomain.yMax - drag.startDomain.yMin;
+        const deltaX = event.clientX - drag.startClientX;
+        const deltaY = event.clientY - drag.startClientY;
+        view.xActive = true;
+        view.yActive = true;
+        view.xMin = drag.startDomain.xMin - (deltaX / Math.max(view.plotRect.width, 1)) * xSpan;
+        view.xMax = drag.startDomain.xMax - (deltaX / Math.max(view.plotRect.width, 1)) * xSpan;
+        view.yMin = drag.startDomain.yMin + (deltaY / Math.max(view.plotRect.height, 1)) * ySpan;
+        view.yMax = drag.startDomain.yMax + (deltaY / Math.max(view.plotRect.height, 1)) * ySpan;
+        syncHistoryXToPartner(view);
+        scheduleChartRender();
+      });
+      window.addEventListener("mouseup", () => {
+        stopActiveChartDrag();
+      });
+      window.addEventListener("blur", stopActiveChartDrag);
+      document.addEventListener("visibilitychange", () => {
+        if (document.hidden) {
+          stopActiveChartDrag();
+        }
+      });
+      const TEXT_INPUT_TYPES = new Set([
+        "text",
+        "search",
+        "url",
+        "email",
+        "tel",
+        "number",
+        "password",
+        "date",
+        "time",
+        "datetime-local",
+        "month",
+        "week",
+      ]);
+      window.addEventListener("keydown", (event) => {
+        if (!(event.code === "Space" || event.key === " ")) {
+          return;
+        }
+        const target = event.target;
+        if (target instanceof HTMLElement) {
+          const tagName = target.tagName;
+          if (target.isContentEditable || tagName === "TEXTAREA" || tagName === "SELECT") {
+            return;
+          }
+          if (tagName === "INPUT") {
+            const type = (target.type || "").toLowerCase();
+            if (TEXT_INPUT_TYPES.has(type)) {
+              return;
+            }
+            if (typeof target.blur === "function") {
+              target.blur();
+            }
+          } else if (tagName === "BUTTON" && typeof target.blur === "function") {
+            target.blur();
+          }
+        }
+        if (!state.connected) {
+          return;
+        }
+        event.preventDefault();
+        toggleUiPause();
+      });
+      window.addEventListener("resize", scheduleRender);
+      window.addEventListener("beforeunload", () => {
+        if (state.port) {
+          disconnectSerial(false);
+        }
+      });
+    }
+
+    bindEvents();
+    applyTranslations();
+    addEvent("eventReady");
+  </script>
+</body>
+</html>

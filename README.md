@@ -1,185 +1,171 @@
-Wi-Fi CSI Human Radar using M5Stack Cardputer
+Wi-Fi CSI Human Radar Using M5Stack Cardputer
 
-A real-time Human Presence and Motion Detection system using Wi-Fi Channel State Information (CSI), implemented with an M5Stack Cardputer based on the ESP32-S3.
+A real-time, camera-free human presence and motion detection system based on Wi-Fi Channel State Information (CSI), using an M5Stack Cardputer powered by an ESP32-S3.
 
-The system uses changes in Wi-Fi signal characteristics caused by human movement to detect whether a person is present and whether there is motion in the sensing environment.
+---
 
-🚀 Project Overview
+System Overview
 
-Traditional human detection systems commonly use cameras, PIR sensors, ultrasonic sensors, or other dedicated sensing hardware. This project explores a camera-free sensing approach using Wi-Fi CSI.
+The proposed system uses Wi-Fi CSI to detect changes in the surrounding wireless channel caused by human movement and presence.
 
-The M5Stack Cardputer (ESP32-S3) acts as the CSI sensing device. It captures CSI information from a 2.4 GHz Wi-Fi signal and monitors variations in the received signal caused by changes in the surrounding environment.
+The M5Stack Cardputer acts as the primary CSI sensing node. CSI data obtained from the Wi-Fi environment is transferred to a computer for signal processing, analysis, monitoring, and visualization.
 
-A computer/laptop is used as the monitoring and processing system. The CSI data obtained from the Cardputer is transferred to the computer, where the data can be processed, monitored, and visualized in real time.
+The system provides a non-contact method for detecting human presence and movement without using a camera.
 
-🧩 System Architecture
+---
 
-        2.4 GHz Wi-Fi Router
-                 │
-                 │ Wi-Fi Signal
-                 ▼
-        ┌──────────────────┐
-        │  M5Stack         │
-        │  Cardputer       │
-        │  ESP32-S3        │
-        └────────┬─────────┘
-                 │
-                 │ CSI Data
-                 ▼
-        ┌──────────────────┐
-        │ Computer /       │
-        │ Laptop           │
-        │                  │
-        │ Data Processing  │
-        │ & Visualization  │
-        └────────┬─────────┘
-                 │
-                 ▼
-       Human Presence / Motion
-             Detection
+Hardware Requirements
 
-⚙️ Working Principle
+Component| Description
+M5Stack Cardputer| ESP32-S3 based CSI sensing device
+Wi-Fi Router| Provides the wireless signal required for CSI sensing
+Computer / Laptop| Used for CSI data processing, monitoring, and visualization
+USB Type-C Cable| Used for programming and serial communication
 
-The system operates based on Channel State Information (CSI) obtained from the Wi-Fi communication channel.
+---
 
-CSI contains information about how a wireless signal is affected while travelling between the transmitter and receiver. When a person enters the sensing area or moves within it, the wireless propagation path changes.
+Hardware Architecture
 
-These changes can produce variations in the CSI measurements.
+             ┌──────────────────┐
+             │   Wi-Fi Router   │
+             │    2.4 GHz       │
+             └────────┬─────────┘
+                      │
+                 Wi-Fi Signal
+                      │
+                      ▼
+             ┌──────────────────┐
+             │ M5Stack Cardputer│
+             │    ESP32-S3      │
+             │                  │
+             │   CSI Sensing    │
+             └────────┬─────────┘
+                      │
+                 CSI / Serial
+                      │
+                      ▼
+             ┌──────────────────┐
+             │ Computer / Laptop│
+             │                  │
+             │ Signal Processing│
+             │ Data Analysis    │
+             │ Visualization    │
+             └────────┬─────────┘
+                      │
+                      ▼
+             ┌──────────────────┐
+             │ Presence & Motion│
+             │    Detection     │
+             └──────────────────┘
 
-The basic processing flow is:
+---
 
-1. The 2.4 GHz Wi-Fi router provides the wireless signal.
-2. The M5Stack Cardputer receives the Wi-Fi signal and collects CSI information.
-3. CSI measurements are continuously monitored for signal variations.
-4. The collected CSI data is sent to the computer/laptop.
-5. The computer processes and monitors the CSI measurements.
-6. Changes in the signal are analyzed to identify human presence and motion.
-7. The detected activity can be displayed as real-time output for monitoring and demonstration.
+Working Principle
 
-🖥️ Role of the Computer
+The Wi-Fi router continuously provides a wireless signal within the sensing area. When a person enters the area or moves within it, the propagation path of the Wi-Fi signal changes.
 
-The computer is an important part of the monitoring and analysis pipeline.
+These changes produce variations in the Channel State Information (CSI). The M5Stack Cardputer, using its ESP32-S3 Wi-Fi interface, captures the CSI-related signal information.
 
-The Cardputer performs the Wi-Fi CSI sensing, while the computer is used for data handling, processing, monitoring, and visualization.
+The collected data is transferred to a computer, where the signal is processed and analyzed. Based on the extracted signal variations, the system determines whether human presence or movement is detected.
 
-The computer is used for:
+---
 
-- Receiving CSI/output data from the Cardputer
-- Monitoring real-time CSI measurements
-- Processing signal variations
-- Applying the detection logic
-- Displaying presence and motion status
-- Visualizing the collected data for analysis
-- Debugging and evaluating system performance
+Computer-Based Processing
 
-This separation allows the Cardputer to focus on wireless sensing, while the computer provides greater processing capability for real-time analysis and visualization.
+The computer is an important part of the monitoring and analysis layer of the system.
 
-🔧 Hardware Requirements
+The Cardputer performs the Wi-Fi CSI sensing, while the computer provides the computational environment required for data monitoring, processing, visualization, calibration, and testing.
 
-- M5Stack Cardputer – ESP32-S3
-- 2.4 GHz Wi-Fi Router
-- Computer / Laptop
-- USB cable for programming and data communication
+Cardputer
+    │
+    │ CSI Data
+    ▼
+Computer
+    │
+    ├── Data Acquisition
+    ├── Signal Processing
+    ├── CSI Analysis
+    ├── Visualization
+    └── Detection Result
 
-No camera, PIR sensor, ultrasonic sensor, or dedicated motion sensor is required for the basic detection system.
+The computer does not replace the CSI sensing hardware. It functions as the processing and visualization platform for the data received from the Cardputer.
 
-💻 Software / Development Environment
+---
 
-- Arduino IDE / ESP32 development environment
-- ESP32-S3 support
-- Serial communication for monitoring
-- Computer-based data processing and visualization
-- Wi-Fi CSI processing and analysis
+Detection
 
-📊 CSI Data Processing
+The system analyzes variations in CSI signal characteristics to identify changes in the environment.
 
-The CSI measurements contain signal information that can change when the wireless propagation environment changes.
+When a person is present, the Wi-Fi channel characteristics are affected by the person's body and movement. These variations are analyzed to estimate the current human activity state.
 
-The system observes CSI variations over time and uses these variations to determine whether significant activity is occurring.
+The primary detection outputs are:
 
-A simplified processing pipeline is:
+PRESENCE
+   │
+   ├── Human detected
+   └── No human detected
 
-CSI Acquisition
-      ↓
-Raw CSI Data
-      ↓
-Signal Monitoring
-      ↓
-Noise / Variation Analysis
-      ↓
-Motion Detection Logic
-      ↓
-Presence / Motion Status
-      ↓
-Computer Visualization
+MOTION
+   │
+   ├── Movement detected
+   └── No significant movement
 
-The detection approach is based on changes in the Wi-Fi channel rather than image-based recognition. Therefore, the system can detect activity without requiring a camera.
+---
 
-✨ Key Features
+Software and Processing Environment
 
-- 📡 Wi-Fi CSI-based sensing
-- 👤 Real-time human presence detection
-- 🚶 Human motion detection
-- 📷 Camera-free sensing
-- ⚡ ESP32-S3 based implementation
-- 💻 Computer-based processing and visualization
-- 📊 Real-time CSI monitoring
-- 🔌 Low-cost hardware implementation
-- 📶 Uses standard 2.4 GHz Wi-Fi signals
+The computer-side monitoring system can be used to receive the Cardputer output through a serial or network communication interface.
 
-🎯 Applications
+The processing layer is responsible for acquiring the data, filtering unwanted variations, analyzing CSI signal changes, and presenting the detection results through a real-time monitoring interface.
 
-This type of Wi-Fi sensing technology can be explored for:
+---
 
-- Smart room monitoring
-- Human presence detection
-- Occupancy monitoring
-- Motion-aware environments
-- Smart home applications
-- Privacy-friendly sensing
-- Wireless sensing research
-- Human activity monitoring
+System Features
 
-⚠️ Limitations
+Real-Time Presence Detection
+Detects human presence using changes in Wi-Fi CSI characteristics.
 
-The current implementation focuses primarily on presence and motion detection based on CSI variations.
+Motion Detection
+Identifies movement based on variations in the received CSI signal.
 
-CSI is sensitive to environmental changes, multipath effects, Wi-Fi traffic, and noise. Therefore, the detection performance can vary depending on the room layout, router position, Cardputer position, and surrounding objects.
+Camera-Free Sensing
+The system does not require a camera for detecting human presence or movement.
 
-The current system should be considered a Wi-Fi sensing prototype, rather than a precise indoor positioning or human identification system.
+Non-Contact Detection
+Detection is performed using wireless signal variations without requiring physical contact with the person.
 
-🔮 Future Improvements
+ESP32-S3 Based Sensing
+The M5Stack Cardputer provides the Wi-Fi CSI sensing capability through its ESP32-S3 platform.
 
-Possible future improvements include:
+Computer-Based Visualization
+The computer provides a convenient interface for monitoring and visualizing the sensing data in real time.
 
-- Machine-learning-based activity classification
-- Improved noise filtering
-- Multi-device CSI sensing
-- Multi-person detection
-- More advanced real-time visualization
-- Indoor localization
-- Improved accuracy and stability
-- Automatic calibration for different environments
+---
 
-📁 Project Structure
+System Flow
 
-WiFi-CSI-Human-Radar-Cardputer/
-│
-├── src/
-│   └── CSI sensing and detection code
-│
-├── README.md
-│
-└── ...
+Wi-Fi Transmission
+        ↓
+CSI Signal Variation
+        ↓
+M5Stack Cardputer
+        ↓
+CSI Data Acquisition
+        ↓
+Computer / Laptop
+        ↓
+Signal Processing
+        ↓
+CSI Analysis
+        ↓
+Presence / Motion Detection
+        ↓
+Real-Time Visualization
 
-🎥 Demo
+---
 
-A demonstration video shows the M5Stack Cardputer running the Wi-Fi CSI sensing system and the corresponding output being monitored on a computer.
+Project Objective
 
-📌 Summary
+The objective of this project is to develop a privacy-preserving indoor sensing system capable of detecting human presence and movement using Wi-Fi CSI technology.
 
-This project demonstrates how an M5Stack Cardputer with ESP32-S3 can be used as a compact Wi-Fi CSI sensing device for real-time human presence and motion detection.
-
-The 2.4 GHz Wi-Fi signal acts as the sensing medium, the Cardputer captures CSI variations, and the computer handles monitoring, processing, and visualization of the sensing data.
-
-The project demonstrates a low-cost and camera-free approach to wireless human sensing using commercially available hardware.
+By combining an ESP32-S3 based M5Stack Cardputer with computer-based signal processing, the system provides a low-cost, camera-free, and non-contact approach for indoor human activity monitoring.

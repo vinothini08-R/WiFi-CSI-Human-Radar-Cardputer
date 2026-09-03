@@ -70,6 +70,9 @@ for indoor human presence and motion sensing.
              │     Analysis     │
              └──────────────────┘
 
+
+
+
 ## Working Principle
 
 The Wi-Fi router provides a wireless signal within the sensing area. When a person enters the area or moves within it, the propagation characteristics of the wireless signal change.

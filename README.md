@@ -34,9 +34,7 @@ for indoor human presence and motion sensing.
 | Computer / Laptop | Used for CSI data processing, monitoring and visualization |
 | USB Type-C Cable | Used for programming and serial communication |
 
----
-
-## Hardware Architecture
+---## Hardware Architecture
 
 ```text
              ┌──────────────────┐
@@ -71,3 +69,13 @@ for indoor human presence and motion sensing.
              │ Presence & Motion│
              │     Analysis     │
              └──────────────────┘
+
+## Working Principle
+
+The Wi-Fi router provides a wireless signal within the sensing area. When a person enters the area or moves within it, the propagation characteristics of the wireless signal change.
+
+These changes produce variations in Wi-Fi Channel State Information (CSI).
+
+The M5Stack Cardputer uses its ESP32-S3 Wi-Fi interface for CSI sensing. The acquired CSI-related information can then be transferred to a computer for monitoring, processing and analysis.
+
+Signal variations are analyzed to identify changes in the wireless environment associated with human presence and movement.

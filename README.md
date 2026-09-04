@@ -1,90 +1,65 @@
-  # WiFi CSI Human Radar – M5Stack Cardputer ADV
+  # WiFi CSI Human Radar – M5Stack Cardputer
 
-Real-time human presence and motion detection using Wi-Fi Channel State Information (CSI) on the M5Stack Cardputer ADV with ESP32-S3.
+## Overview
 
-## Project Overview
+This project demonstrates real-time human presence and motion detection using Wi-Fi Channel State Information (CSI) on the M5Stack Cardputer with ESP32-S3.
 
-This project uses Wi-Fi CSI signals to detect changes in the surrounding environment caused by human movement and presence.
-
-The M5Stack Cardputer ADV is used as the primary sensing and display device.
+The system uses Wi-Fi CSI signals to observe changes caused by human movement and displays the detected activity through a radar-style interface.
 
 ## Hardware
 
 - M5Stack Cardputer ADV
 - ESP32-S3
-- 2.4 GHz Wi-Fi network
-- Computer/Laptop for monitoring and visualization
+- Wi-Fi connection
+- No camera required
 
-## System Flow
+## Working Principle
 
-M5Stack Cardputer ADV
-        ↓
-ESP32-S3 Wi-Fi CSI
-        ↓
-CSI Data Acquisition
-        ↓
-CSI Signal Processing
-        ↓
-Motion Detection
-        ↓
-Human Presence Detection
-        ↓
-Cardputer Display / Web Visualization
+Wi-Fi signals are affected when a person is present or moving near the device.
 
-## Main Features
+The system:
 
-- Wi-Fi CSI data acquisition
-- RSSI monitoring
-- CSI signal analysis
-- Motion detection
-- Human presence detection
-- Real-time visualization
-- Cardputer-based operation
-- Web-based monitoring
-
-## Firmware
-
-The repository contains the ESP-IDF based firmware source code used for CSI acquisition and signal processing.
-
-The project uses C source files such as `app_main.c` and related CSI/radar processing modules.
-
-> Note: The M5Burner RADAR V1.5 firmware is a precompiled firmware used for testing. Its proprietary source code is not part of this repository.
+1. Captures Wi-Fi CSI information.
+2. Processes changes in the CSI signal.
+3. Detects human presence or movement.
+4. Displays the activity using the radar interface.
+5. Provides a web-based interface for monitoring the output.
 
 ## Output
 
-The system provides real-time radar/CSI information including:
+The radar interface provides:
 
-- Wi-Fi connection status
-- RSSI
-- CSI activity
-- Motion status
-- Presence status
-- CSI/radar signal visualization
+- Real-time motion graph
+- CSI activity monitoring
+- Threshold information
+- PPS and frequency information
+- 1D / 2D radar display
+- Web-based monitoring
 
-## Project Structure
+## Testing
 
-```text
-firmware/
-├── main/
-│   ├── app_main.c
-│   ├── radar_evaluate.c
-│   ├── app_ifft.c
-│   └── wifi_cmd.c
+The system was tested on the M5Stack Cardputer ADV using the Wi-Fi CSI Radar firmware available through M5Burner.
 
-web/
-├── csi_viewer.html
-└── web_serial_monitor.html
+The radar output was verified through the Cardputer display and web interface.
 
-tools/
-└── Python utilities
+## Firmware Note
 
-data/
-└── Sample CSI data
+The Cardputer Wi-Fi CSI Radar V1.5 firmware used for testing is a precompiled firmware obtained through M5Burner.
 
-docs/
-└── Project documentation                          
+The proprietary source code of this firmware is not included in this repository.
 
+This repository does not claim ownership of the proprietary firmware.
 
+## Project Results
 
+The system successfully demonstrated Wi-Fi CSI based human presence and motion detection without using a camera.
 
+The observed radar output and testing results are included in this repository.
 
+## Media
+
+Project photographs included in this repository.
+
+## Acknowledgement
+
+The Wi-Fi CSI Radar V1.5 firmware used in this project is credited to its original developer and was obtained through M5Burner.

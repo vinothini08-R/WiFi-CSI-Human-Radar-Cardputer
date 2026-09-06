@@ -9,9 +9,9 @@ The system uses Wi-Fi CSI signals to observe changes caused by human movement an
 ## Hardware
 
 - M5Stack Cardputer ADV
-- ESP32-S3
-- Wi-Fi connection
-- No camera required
+- laptop
+- 2.4GHz Wi-Fi connection
+  
 
 ## Working Principle
 
